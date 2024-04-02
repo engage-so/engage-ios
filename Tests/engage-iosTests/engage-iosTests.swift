@@ -1,5 +1,5 @@
 import XCTest
-@testable import engage_ios
+@testable import Engage
 
 final class engage_iosTests: XCTestCase {
     func testExample() throws {
