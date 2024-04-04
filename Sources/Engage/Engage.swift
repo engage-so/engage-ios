@@ -14,7 +14,7 @@ public final class Engage: EngageProtocol {
         let id = uid ?? UserDefaults.value(forKey: "uid") as? String
         guard id != nil else {
             let anonymous = UUID().uuidString
-            UserDefaults.setValue(anonymous, forKey: "uid")
+            UserDefaults.standard.setValue(anonymous, forKey: "uid")
             return anonymous
         }
         return id!
@@ -22,13 +22,13 @@ public final class Engage: EngageProtocol {
     
     
     public func initialise(publicKey: String) async -> Engage {
-        UserDefaults.setValue(publicKey, forKey: "publicKey")
+        UserDefaults.standard.setValue(publicKey, forKey: "publicKey")
         
         return .shared
     }
     
     public func identify(uid: String, properties: [String : Any]) async {
-        UserDefaults.setValue(uid, forKey: "uid")
+        UserDefaults.standard.setValue(uid, forKey: "uid")
         
         var data: [String : Any] = [:]
         var meta: [String : Any] = [:]
