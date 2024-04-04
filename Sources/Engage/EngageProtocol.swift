@@ -7,7 +7,7 @@
 
 import Foundation
 
-protocol EngageProtocol {
+public protocol EngageProtocol {
     func initialise(publicKey: String) async -> Engage
     func identify(uid: String, properties: [String: Any]) async -> Void
     func setDeviceToken(deviceToken: String, uid: String?) async -> Void
