@@ -121,13 +121,11 @@ extension Endpoint {
             request.httpMethod = "PUT"
             if let data = data {
                 request.httpBody = data
-                return request
             }
         case .post(let data):
             request.httpMethod = "POST"
             if let data = data {
                 request.httpBody = data
-                return request
             }
         }
         
