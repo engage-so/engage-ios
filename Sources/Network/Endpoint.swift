@@ -22,31 +22,31 @@ enum Endpoint {
 
 extension Endpoint {
     var host: String {
-        "api.engage.so/v1"
+        "api.engage.so"
     }
     
     var path: String {
         switch self {
         case .identify(let uid, _):
-            return "/users/\(uid)"
+            return "/v1/users/\(uid)"
         case .setDeviceToken(let uid, _):
-            return "/users/\(uid)"
+            return "/v1/users/\(uid)"
         case .logout(let uid, let deviceToken):
-            return "/users/\(uid)/tokens/\(deviceToken)"
+            return "/v1/users/\(uid)/tokens/\(deviceToken)"
         case .addToAccount(let uid, _):
-            return "/users/\(uid)/accounts"
+            return "/v1/users/\(uid)/accounts"
         case .removeFromAccount(let uid, let aid):
-            return "/users/\(uid)/accounts/\(aid)"
+            return "/v1/users/\(uid)/accounts/\(aid)"
         case .changeAccountRole(let uid, let aid, _):
-            return "/users/\(uid)/accounts/\(aid)"
+            return "/v1/users/\(uid)/accounts/\(aid)"
         case .convertToCustomer(let uid, _):
-            return "/users/\(uid)/convert"
+            return "/v1/users/\(uid)/convert"
         case .convertToAccount(let uid, _):
-            return "/users/\(uid)/convert"
+            return "/v1/users/\(uid)/convert"
         case .merge(_):
-            return "/users/merge"
+            return "/v1/users/merge"
         case .track(let uid, _):
-            return "/users/\(uid)/events"
+            return "/v1/users/\(uid)/events"
         }
     }
     
