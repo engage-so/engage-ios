@@ -126,7 +126,6 @@ extension Endpoint {
             request.httpMethod = "POST"
             if let data = data {
                 request.httpBody = data
-                request.setValue("application/json; charset=UTF-8", forHTTPHeaderField: "Content-Type")
             }
         }
         
@@ -134,7 +133,8 @@ extension Endpoint {
         print("KEY: \(publicKey)")
         let auth = "\(publicKey)".data(using: .utf8)?.base64EncodedString() ?? ""
         print("AUTH: \(auth)")
-        request.setValue("Basic \(auth)", forHTTPHeaderField: "Authorization")
+        request.setValue("Basic cGtfYmNiZGNjZWVjYzgwYjZiODNkN2Q4ZGY2NjRhOTg3NjE6", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
         
         return request
     }
