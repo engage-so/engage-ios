@@ -131,9 +131,9 @@ extension Endpoint {
         
         let publicKey = UserDefaults.standard.string(forKey: "publicKey") ?? ""
         print("KEY: \(publicKey)")
-        let auth = "\(publicKey)".data(using: .utf8)?.base64EncodedString() ?? ""
+        let auth = "\(publicKey):".data(using: .utf8)?.base64EncodedString() ?? ""
         print("AUTH: \(auth)")
-        request.setValue("Basic cGtfYmNiZGNjZWVjYzgwYjZiODNkN2Q4ZGY2NjRhOTg3NjE6", forHTTPHeaderField: "Authorization")
+        request.setValue("Basic \(auth)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
         
         return request
