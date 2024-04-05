@@ -11,7 +11,7 @@ public final class Engage: EngageProtocol {
     static public let shared = Engage()
     
     private func userId(uid: String?) -> String {
-        let id = uid ?? UserDefaults.value(forKey: "uid") as? String
+        let id = uid ?? UserDefaults.standard.value(forKey: "uid") as? String
         guard id != nil else {
             let anonymous = UUID().uuidString
             UserDefaults.standard.setValue(anonymous, forKey: "uid")
