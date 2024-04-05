@@ -17,7 +17,7 @@ final class Network: NetworkProtocol {
                 return
             }
             if let response = response as? HTTPURLResponse {
-                print("Engage: \(response.statusCode) - \(response.description)")
+                print("Engage: \(response.statusCode)")
                 return
             }
         }.resume()
