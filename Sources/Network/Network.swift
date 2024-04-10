@@ -10,7 +10,7 @@ import Foundation
 final class Network: NetworkProtocol {
     static let shared = Network()
     
-    func request(_ endpoint: Endpoint) async throws -> Void {
+    func request(_ endpoint: Endpoint) throws -> Void {
         URLSession.shared.dataTask(with: endpoint.request) { data, response, error in
             if let error = error {
                 print("Engage: \(error.localizedDescription)")

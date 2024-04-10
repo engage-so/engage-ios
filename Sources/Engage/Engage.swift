@@ -21,13 +21,13 @@ public final class Engage: EngageProtocol {
     }
     
     
-    public func initialise(publicKey: String) async -> Engage {
+    public func initialise(publicKey: String) -> Engage {
         UserDefaults.standard.setValue(publicKey, forKey: "publicKey")
         
         return .shared
     }
     
-    public func identify(uid: String, properties: [String : Any]) async {
+    public func identify(uid: String, properties: [String : Any]) {
         UserDefaults.standard.setValue(uid, forKey: "uid")
         
         var data: [String : Any] = [:]
@@ -44,23 +44,23 @@ public final class Engage: EngageProtocol {
         
         data["meta"] = meta
         
-        try? await Network.shared.request(.identify(uid: uid, data: data.toData))
+        try? Network.shared.request(.identify(uid: uid, data: data.toData))
     }
     
-    public func setDeviceToken(deviceToken: String, uid: String? = nil) async {
+    public func setDeviceToken(deviceToken: String, uid: String? = nil) {
         let uid = userId(uid: uid)
         let data: [String : Any] = ["device_token": deviceToken, "device_platform": "iOS", "app_version": Bundle.version, "app_build": Bundle.build]
         
-        try? await Network.shared.request(.setDeviceToken(uid: uid, data: data.toData))
+        try? Network.shared.request(.setDeviceToken(uid: uid, data: data.toData))
     }
     
-    public func logout(deviceToken: String, uid: String? = nil) async {
+    public func logout(deviceToken: String, uid: String? = nil) {
         let uid = userId(uid: uid)
         
-        try? await Network.shared.request(.logout(uid: uid, deviceToken: deviceToken))
+        try? Network.shared.request(.logout(uid: uid, deviceToken: deviceToken))
     }
     
-    public func addToAccount(aid: String, role: String? = nil, uid: String? = nil) async {
+    public func addToAccount(aid: String, role: String? = nil, uid: String? = nil) {
         let uid = userId(uid: uid)
         var account: [String : Any] = ["id": aid]
         if role != nil {
@@ -68,49 +68,49 @@ public final class Engage: EngageProtocol {
         }
         let accounts = [account]
         let data: [String : Any] = ["accounts": accounts]
-        try? await Network.shared.request(.addToAccount(uid: uid, data: data.toData))
+        try? Network.shared.request(.addToAccount(uid: uid, data: data.toData))
     }
     
-    public func addAttributes(properties: [String : Any], uid: String? = nil) async {
+    public func addAttributes(properties: [String : Any], uid: String? = nil) {
         let uid = userId(uid: uid)
-        await identify(uid: uid, properties: properties)
+        identify(uid: uid, properties: properties)
     }
     
-    public func removeFromAccount(aid: String, uid: String? = nil) async {
+    public func removeFromAccount(aid: String, uid: String? = nil) {
         let uid = userId(uid: uid)
-        try? await Network.shared.request(.removeFromAccount(uid: uid, aid: aid))
+        try? Network.shared.request(.removeFromAccount(uid: uid, aid: aid))
     }
     
-    public func changeAccountRole(aid: String, role: String, uid: String? = nil) async {
+    public func changeAccountRole(aid: String, role: String, uid: String? = nil) {
         let uid = userId(uid: uid)
         let data: [String : Any] = ["role": role]
-        try? await Network.shared.request(.changeAccountRole(uid: uid, aid: aid, data: data.toData))
+        try? Network.shared.request(.changeAccountRole(uid: uid, aid: aid, data: data.toData))
     }
     
-    public func convertToCustomer(uid: String? = nil) async {
+    public func convertToCustomer(uid: String? = nil) {
         let uid = userId(uid: uid)
         let data: [String : Any] = ["type": "customer"]
-        try? await Network.shared.request(.convertToCustomer(uid: uid, data: data.toData))
+        try? Network.shared.request(.convertToCustomer(uid: uid, data: data.toData))
     }
     
-    public func convertToAccount(uid: String? = nil) async {
+    public func convertToAccount(uid: String? = nil) {
         let uid = userId(uid: uid)
         let data: [String : Any] = ["type": "account"]
-        try? await Network.shared.request(.convertToCustomer(uid: uid, data: data.toData))
+        try? Network.shared.request(.convertToCustomer(uid: uid, data: data.toData))
     }
     
-    public func merge(source: String, destination: String) async {
+    public func merge(source: String, destination: String) {
         let data: [String : Any] = ["source": source, "destination": destination]
-        try? await Network.shared.request(.merge(data: data.toData))
+        try? Network.shared.request(.merge(data: data.toData))
     }
     
-    public func track(event: String, properties: [String : Any]? = nil, uid: String? = nil) async {
+    public func track(event: String, properties: [String : Any]? = nil, uid: String? = nil) {
         let uid = userId(uid: uid)
         var data: [String : Any] = [:]
         
         data["event"] = event
         data["properties"] = properties
         data["timestamp"] = Date().description
-        try? await Network.shared.request(.track(uid: uid, data: data.toData))
+        try? Network.shared.request(.track(uid: uid, data: data.toData))
     }
 }
