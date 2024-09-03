@@ -49,7 +49,7 @@ public final class Engage: EngageProtocol {
     
     public func setDeviceToken(deviceToken: String, uid: String? = nil) {
         let uid = userId(uid: uid)
-        let data: [String : Any] = ["device_token": deviceToken, "device_platform": "iOS", "app_version": Bundle.version, "app_build": Bundle.build]
+        let data: [String : Any] = ["device_token": deviceToken, "device_platform": "ios", "app_version": Bundle.version, "app_build": Bundle.build]
         
         try? Network.shared.request(.setDeviceToken(uid: uid, data: data.toData))
     }
