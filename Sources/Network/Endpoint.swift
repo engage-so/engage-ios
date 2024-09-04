@@ -121,6 +121,7 @@ extension Endpoint {
             request.httpMethod = "PUT"
             if let data = data {
                 request.httpBody = data
+                request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
             }
         case .post(let data):
             request.httpMethod = "POST"
