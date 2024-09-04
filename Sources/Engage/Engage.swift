@@ -48,16 +48,19 @@ public final class Engage: EngageProtocol {
     }
     
     public func setDeviceToken(deviceToken: String, uid: String? = nil) {
+        UserDefaults.standard.setValue(deviceToken, forKey: "deviceToken")
+        
         let uid = userId(uid: uid)
-        let data: [String : Any] = ["device_token": deviceToken, "device_platform": "ios", "app_version": Bundle.version, "app_build": Bundle.build]
+        let data: [String : Any] = ["device_token": deviceToken, "device_platform": "ios", "app_version": Bundle.version, "app_build": Bundle.build, "app_last_active": Date()]
         
         try? Network.shared.request(.setDeviceToken(uid: uid, data: data.toData))
     }
     
-    public func logout(deviceToken: String, uid: String? = nil) {
+    public func logout(deviceToken: String? = nil, uid: String? = nil) {
         let uid = userId(uid: uid)
+        let token = deviceToken ?? UserDefaults.standard.value(forKey: "deviceToken") as? String ?? ""
         
-        try? Network.shared.request(.logout(uid: uid, deviceToken: deviceToken))
+        try? Network.shared.request(.logout(uid: uid, deviceToken: token))
     }
     
     public func addToAccount(aid: String, role: String? = nil, uid: String? = nil) {
@@ -104,13 +107,20 @@ public final class Engage: EngageProtocol {
         try? Network.shared.request(.merge(data: data.toData))
     }
     
-    public func track(event: String, properties: [String : Any]? = nil, uid: String? = nil) {
+    public func track(event: String, value: Any? = nil, date: Date? = nil, uid: String? = nil) {
         let uid = userId(uid: uid)
         var data: [String : Any] = [:]
-        
         data["event"] = event
-        data["properties"] = properties
-        data["timestamp"] = Date().description
+        if (value is Date && date == nil) {
+            data["timestamp"] = value
+        } else if (value is [String: Any]) {
+            data["properties"] = value
+        } else if (value != nil) {
+            data["value"] = value
+        }
+        if (date != nil) {
+            data["timestamp"] = date
+        }
         try? Network.shared.request(.track(uid: uid, data: data.toData))
     }
 }
