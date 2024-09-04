@@ -7,9 +7,23 @@
 
 import Foundation
 
+let dateFormatter = ISO8601DateFormatter()
+
+func convertDatesToStrings(_ object: Any) -> Any {
+    if let date = object as? Date {
+        return dateFormatter.string(from: date)
+    } else if let dict = object as? [String: Any] {
+        return dict.mapValues { convertDatesToStrings($0) }
+    } else if let array = object as? [Any] {
+        return array.map { convertDatesToStrings($0) }
+    }
+    return object
+}
+
 extension Dictionary {
     var toData: Data? {
-        try? JSONSerialization.data(withJSONObject: self)
+        let jsonWithDatesAsString = convertDatesToStrings(self)
+        return try? JSONSerialization.data(withJSONObject: jsonWithDatesAsString)
     }
 }
 
