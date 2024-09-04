@@ -11,7 +11,7 @@ public protocol EngageProtocol {
     func initialise(publicKey: String) async -> Engage
     func identify(uid: String, properties: [String: Any]) -> Void
     func setDeviceToken(deviceToken: String, uid: String?) -> Void
-    func logout(deviceToken: String, uid: String?) -> Void
+    func logout(deviceToken: String?, uid: String?) -> Void
     func addToAccount(aid: String, role: String?, uid: String?) -> Void
     func addAttributes(properties: [String: Any], uid: String?) -> Void
     func removeFromAccount(aid: String, uid: String?) -> Void
@@ -19,5 +19,5 @@ public protocol EngageProtocol {
     func convertToCustomer(uid: String?) -> Void
     func convertToAccount(uid: String?) -> Void
     func merge(source: String, destination: String) -> Void
-    func track(event: String, properties: [String: Any]?, uid: String?) -> Void
+    func track(event: String, value: Any?, date: Date?, uid: String?) -> Void
 }
