@@ -18,6 +18,7 @@ enum Endpoint {
     case convertToAccount(uid: String, data: Data?)
     case merge(data: Data?)
     case track(uid: String, data: Data?)
+    case trackNotification(id: String, data: Data?)
 }
 
 extension Endpoint {
@@ -43,6 +44,8 @@ extension Endpoint {
             return "/v1/users/merge"
         case .track(let uid, _):
             return "/v1/users/\(uid)/events"
+        case .trackNotification(let id, _):
+            return "/v1/messages/mobile/push/\(id)/track"
         }
     }
     
@@ -101,6 +104,8 @@ extension Endpoint {
         case .merge(let data):
             return .post(data: data)
         case .track(_, let data):
+            return .post(data: data)
+        case .trackNotification(_, let data):
             return .post(data: data)
         }
     }
