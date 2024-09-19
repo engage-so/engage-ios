@@ -7,7 +7,7 @@
 
 import Foundation
 
-protocol NotificationHandlerProtocol {
+public protocol NotificationHandlerProtocol {
     func trackMessageOpened(id: String) -> Void
     func trackMessageDelivered(id: String) -> Void
 }

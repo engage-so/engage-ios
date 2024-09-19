@@ -36,9 +36,10 @@ public class NotificationService: NSObject, UNUserNotificationCenterDelegate, Me
                                 willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         let userInfo = notification.request.content.userInfo
+        print("USER INFO FOR FOREGROUND \(userInfo)")
         if let messageId = userInfo[Constants.messageId] as? String {
             print("Identifier: \(messageId)")
-            NotificationHandler.shared.trackMessageReceived(id: messageId)
+            NotificationHandler.shared.trackMessageDelivered(id: messageId)
         }
         completionHandler([.alert, .sound])
     }
@@ -46,9 +47,10 @@ public class NotificationService: NSObject, UNUserNotificationCenterDelegate, Me
     // Called when a notification is received while the app is in the background (content-available: 1)
     public func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any],
                      fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        print("USER INFO FOR BACKGROUND \(userInfo)")
         if let messageId = userInfo[Constants.messageId] as? String {
             print("Identifier: \(messageId)")
-            NotificationHandler.shared.trackMessageReceived(id: messageId)
+            NotificationHandler.shared.trackMessageDelivered(id: messageId)
         }
         completionHandler(.newData)
     }
@@ -58,6 +60,7 @@ public class NotificationService: NSObject, UNUserNotificationCenterDelegate, Me
                                 didReceive response: UNNotificationResponse,
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
+        print("USER INFO FOR CLICK ACTION \(userInfo)")
         if let messageId = userInfo[Constants.messageId] as? String {
             print("Identifier: \(messageId)")
             NotificationHandler.shared.trackMessageOpened(id: messageId)
@@ -72,7 +75,7 @@ extension NotificationService {
             return
         }
         print("New FCM token: \(deviceToken)")
-        if let uid = UserDefaults.standard.value(forKey: "uid") as? String {
+        if UserDefaults.standard.value(forKey: "uid") is String {
             Engage.shared.setDeviceToken(deviceToken: deviceToken)
         }
     }
