@@ -31,6 +31,13 @@ public class NotificationService: NSObject, UNUserNotificationCenterDelegate, Me
         }
     }
     
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
+        print("APNs token: \(tokenString)")
+        // Convert the device token to a string and set it in Firebase
+        Messaging.messaging().apnsToken = deviceToken
+    }
+    
     // Called when a notification is received while the app is in the foreground
     public func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 willPresent notification: UNNotification,
@@ -67,10 +74,13 @@ public class NotificationService: NSObject, UNUserNotificationCenterDelegate, Me
         }
         completionHandler()
     }
-}
-
-extension NotificationService {
-    public func messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?) {
+    
+    // Called when APNs registration fails
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        print("Failed to register for remote notifications: \(error)")
+    }
+    
+    private func messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?) {
         guard let deviceToken = fcmToken else {
             return
         }
@@ -80,3 +90,4 @@ extension NotificationService {
         }
     }
 }
+
