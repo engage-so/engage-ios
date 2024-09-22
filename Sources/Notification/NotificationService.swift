@@ -20,7 +20,7 @@ public class NotificationService: NSObject, UNUserNotificationCenterDelegate, Me
         Messaging.messaging().delegate = self
     }
 
-    func configureNotifications() {
+    public func configureNotifications() {
         let options: UNAuthorizationOptions = [.alert, .sound, .badge]
         UNUserNotificationCenter.current().requestAuthorization(options: options) { granted, error in
             if granted {
