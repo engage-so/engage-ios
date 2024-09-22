@@ -80,7 +80,11 @@ public class NotificationService: NSObject, UNUserNotificationCenterDelegate, Me
         print("Failed to register for remote notifications: \(error)")
     }
     
-    private func messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?) {
+    
+}
+
+extension NotificationService {
+    func messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?) {
         guard let deviceToken = fcmToken else {
             return
         }
@@ -90,4 +94,3 @@ public class NotificationService: NSObject, UNUserNotificationCenterDelegate, Me
         }
     }
 }
-
