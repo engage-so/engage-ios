@@ -12,7 +12,7 @@ import UIKit
 
 
 public class NotificationService: NSObject, UNUserNotificationCenterDelegate, MessagingDelegate {
-    static let shared = NotificationService()
+    static public let shared = NotificationService()
     
     override init() {
         super.init()
