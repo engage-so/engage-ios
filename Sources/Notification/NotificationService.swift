@@ -84,7 +84,7 @@ public class NotificationService: NSObject, UNUserNotificationCenterDelegate, Me
 }
 
 extension NotificationService {
-    func messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?) {
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         guard let deviceToken = fcmToken else {
             return
         }
