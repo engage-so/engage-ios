@@ -23,6 +23,7 @@ public final class Engage: EngageProtocol {
     
     public func initialise(publicKey: String) -> Engage {
         UserDefaults.standard.setValue(publicKey, forKey: "publicKey")
+        NotificationService.shared.initialise()
         
         return .shared
     }
@@ -122,5 +123,13 @@ public final class Engage: EngageProtocol {
             data["timestamp"] = date
         }
         try? Network.shared.request(.track(uid: uid, data: data.toData))
+    }
+    
+    public func onMessageOpened(_ handler: @escaping ([AnyHashable : Any]) -> Void) {
+        NotificationHandler.shared.setOnMessageOpened(handler)
+    }
+    
+    public func onMessageReceived(_ handler: @escaping ([AnyHashable : Any]) -> Void) {
+        NotificationHandler.shared.setOnMessageReceived(handler)
     }
 }

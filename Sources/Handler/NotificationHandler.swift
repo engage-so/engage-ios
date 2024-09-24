@@ -7,18 +7,31 @@
 
 import Foundation
 
-public final class NotificationHandler: NotificationHandlerProtocol {
-    static public let shared = NotificationHandler()
+final class NotificationHandler: NotificationHandlerProtocol {
+    static let shared = NotificationHandler()
     
-    public func trackMessageOpened(id: String) {
+    private var onMessageOpened: MessageHandler?
+    private var onMessageReceived: MessageHandler?
+    
+    func trackMessageOpened(id: String) {
         let data: [String : Any] = ["event": "opened"]
         
         try? Network.shared.request(.trackNotification(id: id, data: data.toData))
+        onMessageOpened?(data)
     }
     
-    public func trackMessageDelivered(id: String) {
+    func trackMessageDelivered(id: String) {
         let data: [String : Any] = ["event": "delivered"]
         
         try? Network.shared.request(.trackNotification(id: id, data: data.toData))
+        onMessageReceived?(data)
+    }
+    
+    func setOnMessageOpened(_ handler: @escaping ([AnyHashable : Any]) -> Void) {
+        onMessageOpened = handler
+    }
+    
+    func setOnMessageReceived(_ handler: @escaping ([AnyHashable : Any]) -> Void) {
+        onMessageReceived = handler
     }
 }
