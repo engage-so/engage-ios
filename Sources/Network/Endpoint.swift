@@ -136,7 +136,7 @@ extension Endpoint {
             }
         }
         
-        let publicKey = UserDefaults.standard.string(forKey: "publicKey") ?? ""
+        let publicKey = UserDefaults.standard.string(forKey: Constants.publicKey) ?? ""
         let auth = "\(publicKey):".data(using: .utf8)?.base64EncodedString() ?? ""
         request.setValue("Basic \(auth)", forHTTPHeaderField: "Authorization")
         

@@ -11,10 +11,10 @@ public final class Engage: EngageProtocol {
     static public let shared = Engage()
     
     private func userId(uid: String?) -> String {
-        let id = uid ?? UserDefaults.standard.value(forKey: "uid") as? String
+        let id = uid ?? UserDefaults.standard.value(forKey: Constants.uid) as? String
         guard id != nil else {
             let anonymous = UUID().uuidString
-            UserDefaults.standard.setValue(anonymous, forKey: "uid")
+            UserDefaults.standard.setValue(anonymous, forKey: Constants.uid)
             return anonymous
         }
         return id!
@@ -22,14 +22,19 @@ public final class Engage: EngageProtocol {
     
     
     public func initialise(publicKey: String) -> Engage {
-        UserDefaults.standard.setValue(publicKey, forKey: "publicKey")
+        UserDefaults.standard.setValue(publicKey, forKey: Constants.publicKey)
         NotificationService.shared.initialise()
         
         return .shared
     }
     
     public func identify(uid: String, properties: [String : Any]) {
-        UserDefaults.standard.setValue(uid, forKey: "uid")
+        let id = UserDefaults.standard.value(forKey: Constants.uid) as? String
+        if id != nil && id != uid {
+            merge(source: id!, destination: uid)
+        }
+        
+        UserDefaults.standard.setValue(uid, forKey: Constants.uid)
         
         var data: [String : Any] = [:]
         var meta: [String : Any] = [:]
@@ -46,20 +51,28 @@ public final class Engage: EngageProtocol {
         data["meta"] = meta
         
         try? Network.shared.request(.identify(uid: uid, data: data.toData))
+        guard UserDefaults.standard.value(forKey: Constants.hasUsageActivity) as? Bool ?? false else {
+            UserDefaults.standard.setValue(true, forKey: Constants.hasUsageActivity)
+            return
+        }
     }
     
     public func setDeviceToken(deviceToken: String, uid: String? = nil) {
-        UserDefaults.standard.setValue(deviceToken, forKey: "deviceToken")
+        UserDefaults.standard.setValue(deviceToken, forKey: Constants.deviceToken)
         
         let uid = userId(uid: uid)
         let data: [String : Any] = ["device_token": deviceToken, "device_platform": "ios", "app_version": Bundle.version, "app_build": Bundle.build, "app_last_active": Date()]
         
         try? Network.shared.request(.setDeviceToken(uid: uid, data: data.toData))
+        guard UserDefaults.standard.value(forKey: Constants.hasUsageActivity) as? Bool ?? false else {
+            UserDefaults.standard.setValue(true, forKey: Constants.hasUsageActivity)
+            return
+        }
     }
     
     public func logout(deviceToken: String? = nil, uid: String? = nil) {
         let uid = userId(uid: uid)
-        let token = deviceToken ?? UserDefaults.standard.value(forKey: "deviceToken") as? String ?? ""
+        let token = deviceToken ?? UserDefaults.standard.value(forKey: Constants.deviceToken) as? String ?? ""
         
         try? Network.shared.request(.logout(uid: uid, deviceToken: token))
     }
@@ -123,6 +136,10 @@ public final class Engage: EngageProtocol {
             data["timestamp"] = date
         }
         try? Network.shared.request(.track(uid: uid, data: data.toData))
+        guard UserDefaults.standard.value(forKey: Constants.hasUsageActivity) as? Bool ?? false else {
+            UserDefaults.standard.setValue(true, forKey: Constants.hasUsageActivity)
+            return
+        }
     }
     
     public func onMessageOpened(_ handler: @escaping ([AnyHashable : Any]) -> Void) {

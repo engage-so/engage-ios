@@ -8,8 +8,8 @@
 import Foundation
 
 protocol NotificationHandlerProtocol {
-    func trackMessageOpened(id: String) -> Void
-    func trackMessageDelivered(id: String) -> Void
+    func trackMessageOpened(userInfo: [AnyHashable : Any]) -> Void
+    func trackMessageDelivered(userInfo: [AnyHashable : Any]) -> Void
     func setOnMessageOpened(_ handler: @escaping ([AnyHashable : Any]) -> Void) -> Void
     func setOnMessageReceived(_ handler: @escaping ([AnyHashable : Any]) -> Void) -> Void
 }

@@ -39,10 +39,7 @@ class NotificationService: NSObject, UNUserNotificationCenterDelegate, Messaging
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         let userInfo = notification.request.content.userInfo
         print("USER INFO FOR FOREGROUND \(userInfo)")
-        if let messageId = userInfo[Constants.messageId] as? String {
-            print("Identifier: \(messageId)")
-            NotificationHandler.shared.trackMessageDelivered(id: messageId)
-        }
+        NotificationHandler.shared.trackMessageDelivered(userInfo: userInfo)
         completionHandler([.alert, .sound])
     }
     
@@ -50,10 +47,7 @@ class NotificationService: NSObject, UNUserNotificationCenterDelegate, Messaging
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any],
                      fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         print("USER INFO FOR BACKGROUND \(userInfo)")
-        if let messageId = userInfo[Constants.messageId] as? String {
-            print("Identifier: \(messageId)")
-            NotificationHandler.shared.trackMessageDelivered(id: messageId)
-        }
+        NotificationHandler.shared.trackMessageDelivered(userInfo: userInfo)
         completionHandler(.newData)
     }
 
@@ -63,10 +57,7 @@ class NotificationService: NSObject, UNUserNotificationCenterDelegate, Messaging
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
         print("USER INFO FOR CLICK ACTION \(userInfo)")
-        if let messageId = userInfo[Constants.messageId] as? String {
-            print("Identifier: \(messageId)")
-            NotificationHandler.shared.trackMessageOpened(id: messageId)
-        }
+        NotificationHandler.shared.trackMessageOpened(userInfo: userInfo)
         completionHandler()
     }
     
@@ -74,7 +65,10 @@ class NotificationService: NSObject, UNUserNotificationCenterDelegate, Messaging
         guard let deviceToken = fcmToken else {
             return
         }
-        print("New FCM token: \(deviceToken)")
-        Engage.shared.setDeviceToken(deviceToken: deviceToken)
+        let hasUsageActivity = UserDefaults.standard.value(forKey: Constants.hasUsageActivity) as? Bool ?? false
+        print("New FCM token: \(deviceToken), Has usage: \(hasUsageActivity)")
+        if (hasUsageActivity) {
+            Engage.shared.setDeviceToken(deviceToken: deviceToken)
+        }
     }
 }
