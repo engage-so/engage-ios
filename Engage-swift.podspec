@@ -14,4 +14,7 @@ Pod::Spec.new do |s|
   s.swift_version = '5.0'
 
   s.source_files = 'Sources/**/*.swift'
+  
+  # FirebaseMessaging dependency
+  s.dependency 'FirebaseMessaging'
 end
