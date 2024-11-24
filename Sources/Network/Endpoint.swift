@@ -18,6 +18,7 @@ enum Endpoint {
     case convertToAccount(uid: String, data: Data?)
     case merge(data: Data?)
     case track(uid: String, data: Data?)
+    case trackNotification(id: String, data: Data?)
 }
 
 extension Endpoint {
@@ -43,6 +44,8 @@ extension Endpoint {
             return "/v1/users/merge"
         case .track(let uid, _):
             return "/v1/users/\(uid)/events"
+        case .trackNotification(let id, _):
+            return "/v1/messages/mobile/push/\(id)/track"
         }
     }
     
@@ -102,6 +105,8 @@ extension Endpoint {
             return .post(data: data)
         case .track(_, let data):
             return .post(data: data)
+        case .trackNotification(_, let data):
+            return .post(data: data)
         }
     }
     
@@ -121,6 +126,7 @@ extension Endpoint {
             request.httpMethod = "PUT"
             if let data = data {
                 request.httpBody = data
+                request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
             }
         case .post(let data):
             request.httpMethod = "POST"
@@ -130,7 +136,7 @@ extension Endpoint {
             }
         }
         
-        let publicKey = UserDefaults.standard.string(forKey: "publicKey") ?? ""
+        let publicKey = UserDefaults.standard.string(forKey: Constants.publicKey) ?? ""
         let auth = "\(publicKey):".data(using: .utf8)?.base64EncodedString() ?? ""
         request.setValue("Basic \(auth)", forHTTPHeaderField: "Authorization")
         
