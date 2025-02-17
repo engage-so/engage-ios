@@ -22,5 +22,4 @@ public protocol EngageProtocol {
     func track(event: String, value: Any?, date: Date?, uid: String?) -> Void
     func onMessageOpened(_ handler: @escaping ([AnyHashable : Any]) -> Void) -> Void
     func onMessageReceived(_ handler: @escaping ([AnyHashable : Any]) -> Void) -> Void
-    func showDialog(isCarousel: Bool) -> Void
 }
