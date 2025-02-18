@@ -8,7 +8,7 @@
 import Foundation
 
 public final class NotificationHandler: NotificationHandlerProtocol {
-    static let shared = NotificationHandler()
+    static public let shared = NotificationHandler()
     
     private var onMessageOpened: MessageHandler?
     private var onMessageReceived: MessageHandler?
