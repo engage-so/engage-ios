@@ -7,13 +7,13 @@
 
 import Foundation
 
-final class NotificationHandler: NotificationHandlerProtocol {
+public final class NotificationHandler: NotificationHandlerProtocol {
     static let shared = NotificationHandler()
     
     private var onMessageOpened: MessageHandler?
     private var onMessageReceived: MessageHandler?
     
-    func trackMessageOpened(userInfo: [AnyHashable : Any]) {
+    public func trackMessageOpened(userInfo: [AnyHashable : Any]) {
         if let id = userInfo[Constants.messageId] as? String {
             print("Identifier: \(id)")
             let data: [String : Any] = ["event": "opened"]
@@ -23,7 +23,7 @@ final class NotificationHandler: NotificationHandlerProtocol {
         }
     }
     
-    func trackMessageDelivered(userInfo: [AnyHashable : Any]) {
+    public func trackMessageDelivered(userInfo: [AnyHashable : Any]) {
         if let id = userInfo[Constants.messageId] as? String {
             print("Identifier: \(id)")
             let data: [String : Any] = ["event": "delivered"]
@@ -33,11 +33,11 @@ final class NotificationHandler: NotificationHandlerProtocol {
         }
     }
     
-    func setOnMessageOpened(_ handler: @escaping ([AnyHashable : Any]) -> Void) {
+    public func setOnMessageOpened(_ handler: @escaping ([AnyHashable : Any]) -> Void) {
         onMessageOpened = handler
     }
     
-    func setOnMessageReceived(_ handler: @escaping ([AnyHashable : Any]) -> Void) {
+    public func setOnMessageReceived(_ handler: @escaping ([AnyHashable : Any]) -> Void) {
         onMessageReceived = handler
     }
 }
