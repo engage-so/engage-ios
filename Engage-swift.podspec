@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'Engage-swift'
-  s.version          = '0.3.1'
+  s.version          = '0.3.2'
   s.module_name      = 'Engage'
   s.summary          = 'Official Engage SDK for iOS.'
   s.homepage         = 'https://engage.so/'
