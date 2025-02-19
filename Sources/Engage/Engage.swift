@@ -21,7 +21,7 @@ public final class Engage: EngageProtocol {
     }
     
     
-    public func initialise(publicKey: String) -> Engage {
+    public func initialize(publicKey: String) -> Engage {
         UserDefaults.standard.setValue(publicKey, forKey: Constants.publicKey)
         NotificationService.shared.initialise()
         
