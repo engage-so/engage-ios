@@ -9,6 +9,7 @@ import Foundation
 import FirebaseMessaging
 import UserNotifications
 import UIKit
+import FirebaseCore
 
 typealias MessageHandler = ([AnyHashable : Any]) -> Void
 
@@ -16,6 +17,7 @@ class NotificationService: NSObject, UNUserNotificationCenterDelegate, Messaging
     static let shared = NotificationService()
 
     func initialise() {
+        FirebaseApp.configure()
         UNUserNotificationCenter.current().delegate = self
         Messaging.messaging().delegate = self
     }

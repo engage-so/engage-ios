@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import FirebaseMessaging
 
 public final class Engage: EngageProtocol {
     static public let shared = Engage()
@@ -54,6 +55,12 @@ public final class Engage: EngageProtocol {
         guard UserDefaults.standard.value(forKey: Constants.hasUsageActivity) as? Bool ?? false else {
             UserDefaults.standard.setValue(true, forKey: Constants.hasUsageActivity)
             return
+        }
+        
+        Messaging.messaging().token { token, _ in
+          if let token = token {
+              self.setDeviceToken(deviceToken: token)
+          }
         }
     }
     
