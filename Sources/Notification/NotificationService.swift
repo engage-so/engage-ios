@@ -15,27 +15,31 @@ typealias MessageHandler = ([AnyHashable : Any]) -> Void
 
 class NotificationService: NSObject, UNUserNotificationCenterDelegate, MessagingDelegate {
     static let shared = NotificationService()
-
+    
     func initialise() {
         FirebaseApp.configure()
         UNUserNotificationCenter.current().delegate = self
         Messaging.messaging().delegate = self
     }
     
-    // Needed if swizzling is dissabled by setting FirebaseAppDelegateProxyEnabled to NO in the app’s Info.plist
+    /// Needed if swizzling is dissabled by setting FirebaseAppDelegateProxyEnabled to NO in the app’s Info.plist
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
-        print("APNs token: \(tokenString)")
-        // Convert the device token to a string and set it in Firebase
-        Messaging.messaging().apnsToken = deviceToken
+        setAPNsToken(deviceToken)
     }
     
-    // Called when APNs registration fails
+    /// Called when APNs registration fails
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         print("Failed to register for remote notifications: \(error)")
     }
     
-    // Called when a notification is received while the app is in the foreground
+    /// Call this from the app's AppDelegate when the APNs token is received.
+    func setAPNsToken(_ deviceToken: Data) {
+        let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
+        print("APNs token: \(tokenString)")
+        Messaging.messaging().apnsToken = deviceToken
+    }
+    
+    /// Called when a notification is received while the app is in the foreground
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
@@ -45,15 +49,15 @@ class NotificationService: NSObject, UNUserNotificationCenterDelegate, Messaging
         completionHandler([.alert, .sound])
     }
     
-    // Called when a notification is received while the app is in the background (content-available: 1)
+    /// Called when a notification is received while the app is in the background (content-available: 1)
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any],
                      fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         print("USER INFO FOR BACKGROUND \(userInfo)")
         NotificationHandler.shared.trackMessageDelivered(userInfo: userInfo)
         completionHandler(.newData)
     }
-
-    // Called when a notification is opened (foreground, background, or terminated)
+    
+    /// Called when a notification is opened (foreground, background, or terminated)
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 didReceive response: UNNotificationResponse,
                                 withCompletionHandler completionHandler: @escaping () -> Void) {

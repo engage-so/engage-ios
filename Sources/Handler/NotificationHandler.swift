@@ -6,6 +6,8 @@
 //
 
 import Foundation
+import UserNotifications
+import UIKit
 
 public final class NotificationHandler: NotificationHandlerProtocol {
     static public let shared = NotificationHandler()
@@ -39,5 +41,17 @@ public final class NotificationHandler: NotificationHandlerProtocol {
     
     public func setOnMessageReceived(_ handler: @escaping ([AnyHashable : Any]) -> Void) {
         onMessageReceived = handler
+    }
+    
+    public func setAPNsToken(_ deviceToken: Data) {
+        NotificationService.shared.setAPNsToken(deviceToken)
+    }
+    
+    public func requestNotificationPermission(
+        options: UNAuthorizationOptions = [],
+        completionHandler: @escaping (Bool, (any Error)?) -> Void
+    ) {
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: options, completionHandler: completionHandler)
     }
 }
