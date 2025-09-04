@@ -19,6 +19,10 @@ enum Endpoint {
     case merge(data: Data?)
     case track(uid: String, data: Data?)
     case trackNotification(id: String, data: Data?)
+    case loadMessages(uid: String, threadId: String)
+    case loadThreads(uid: String)
+    case sendMessage(data: Data?)
+    case account
 }
 
 extension Endpoint {
@@ -46,6 +50,14 @@ extension Endpoint {
             return "/v1/users/\(uid)/events"
         case .trackNotification(let id, _):
             return "/v1/messages/mobile/push/\(id)/track"
+        case .loadMessages(let uid, let threadId):
+            return "/v1/messages/chat/\(threadId)?uid=\(uid)"
+        case .loadThreads(let uid):
+            return "/v1/messages/chat?uid=\(uid)"
+        case .sendMessage(_):
+            return "/v1/messages/chat"
+        case .account:
+            return "/v1/account"
         }
     }
     
@@ -107,6 +119,14 @@ extension Endpoint {
             return .post(data: data)
         case .trackNotification(_, let data):
             return .post(data: data)
+        case .loadMessages(let uid, let threadId):
+            return .get
+        case .loadThreads(let uid):
+            return .get
+        case .sendMessage(let data):
+            return .put(data: data)
+        case .account:
+            return .get
         }
     }
     

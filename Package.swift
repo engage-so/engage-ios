@@ -5,7 +5,7 @@ import PackageDescription
 
 let package = Package(
     name: "Engage",
-    platforms: [.iOS(.v13)],
+    platforms: [.iOS(.v14)],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
@@ -14,6 +14,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/firebase/firebase-ios-sdk.git", "8.7.0"..<"12.0.0"),
+        .package(url: "https://github.com/socketio/socket.io-client-swift", .upToNextMinor(from: "16.1.1"))
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -21,7 +22,8 @@ let package = Package(
         .target(
             name: "Engage",
             dependencies: [
-                .product(name: "FirebaseMessaging", package: "firebase-ios-sdk")
+                .product(name: "FirebaseMessaging", package: "firebase-ios-sdk"),
+                .product(name: "SocketIO", package: "socket.io-client-swift")
             ],
             path: "Sources"
         ),
@@ -31,3 +33,4 @@ let package = Package(
         ),
     ]
 )
+

@@ -45,15 +45,19 @@ class NotificationService: NSObject, UNUserNotificationCenterDelegate, Messaging
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         let userInfo = notification.request.content.userInfo
         print("USER INFO FOR FOREGROUND \(userInfo)")
-        NotificationHandler.shared.trackMessageDelivered(userInfo: userInfo)
-        completionHandler([.alert, .sound])
+        Task {
+            await NotificationHandler.shared.trackMessageDelivered(userInfo: userInfo)
+        }
+        completionHandler([.banner, .sound])
     }
     
     /// Called when a notification is received while the app is in the background (content-available: 1)
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any],
                      fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         print("USER INFO FOR BACKGROUND \(userInfo)")
-        NotificationHandler.shared.trackMessageDelivered(userInfo: userInfo)
+        Task {
+            await NotificationHandler.shared.trackMessageDelivered(userInfo: userInfo)
+        }
         completionHandler(.newData)
     }
     
@@ -63,7 +67,9 @@ class NotificationService: NSObject, UNUserNotificationCenterDelegate, Messaging
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
         print("USER INFO FOR CLICK ACTION \(userInfo)")
-        NotificationHandler.shared.trackMessageOpened(userInfo: userInfo)
+        Task {
+            await NotificationHandler.shared.trackMessageOpened(userInfo: userInfo)
+        }
         completionHandler()
     }
     
@@ -74,7 +80,9 @@ class NotificationService: NSObject, UNUserNotificationCenterDelegate, Messaging
         let hasUsageActivity = UserDefaults.standard.value(forKey: Constants.hasUsageActivity) as? Bool ?? false
         print("New FCM token: \(deviceToken), Has usage: \(hasUsageActivity)")
         if (hasUsageActivity) {
-            Engage.shared.setDeviceToken(deviceToken: deviceToken)
+            Task {
+                await Engage.shared.setDeviceToken(deviceToken: deviceToken)
+            }
         }
     }
 }

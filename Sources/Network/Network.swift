@@ -10,16 +10,12 @@ import Foundation
 final class Network: NetworkProtocol {
     static let shared = Network()
     
-    func request(_ endpoint: Endpoint) throws -> Void {
-        URLSession.shared.dataTask(with: endpoint.request) { data, response, error in
-            if let error = error {
-                print("Engage: \(error.localizedDescription)")
-                return
-            }
-            if let response = response as? HTTPURLResponse {
-                print("Engage: \(response.statusCode)")
-                return
-            }
-        }.resume()
+    func request(_ endpoint: Endpoint) async throws -> (Data, HTTPURLResponse) {
+        let (data, response) = try await URLSession.shared.data(for: endpoint.request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
+        }
+        print("Engage: \(httpResponse.statusCode)")
+        return (data, httpResponse)
     }
 }

@@ -15,22 +15,22 @@ public final class NotificationHandler: NotificationHandlerProtocol {
     private var onMessageOpened: MessageHandler?
     private var onMessageReceived: MessageHandler?
     
-    public func trackMessageOpened(userInfo: [AnyHashable : Any]) {
+    public func trackMessageOpened(userInfo: [AnyHashable : Any]) async {
         if let id = userInfo[Constants.messageId] as? String {
             print("Identifier: \(id)")
             let data: [String : Any] = ["event": "opened"]
             
-            try? Network.shared.request(.trackNotification(id: id, data: data.toData))
+            let _ = try? await Network.shared.request(.trackNotification(id: id, data: data.toData))
             onMessageOpened?(userInfo)
         }
     }
     
-    public func trackMessageDelivered(userInfo: [AnyHashable : Any]) {
+    public func trackMessageDelivered(userInfo: [AnyHashable : Any]) async {
         if let id = userInfo[Constants.messageId] as? String {
             print("Identifier: \(id)")
             let data: [String : Any] = ["event": "delivered"]
             
-            try? Network.shared.request(.trackNotification(id: id, data: data.toData))
+            let _ = try? await Network.shared.request(.trackNotification(id: id, data: data.toData))
             onMessageReceived?(userInfo)
         }
     }

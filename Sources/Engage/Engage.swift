@@ -29,10 +29,10 @@ public final class Engage: EngageProtocol {
         return .shared
     }
     
-    public func identify(uid: String, properties: [String : Any]) {
+    public func identify(uid: String, properties: [String : Any]) async {
         let id = UserDefaults.standard.value(forKey: Constants.uid) as? String
         if id != nil && id != uid {
-            merge(source: id!, destination: uid)
+            await merge(source: id!, destination: uid)
         }
         
         UserDefaults.standard.setValue(uid, forKey: Constants.uid)
@@ -51,40 +51,39 @@ public final class Engage: EngageProtocol {
         
         data["meta"] = meta
         
-        try? Network.shared.request(.identify(uid: uid, data: data.toData))
+        let _ = try? await Network.shared.request(.identify(uid: uid, data: data.toData))
         guard UserDefaults.standard.value(forKey: Constants.hasUsageActivity) as? Bool ?? false else {
             UserDefaults.standard.setValue(true, forKey: Constants.hasUsageActivity)
             return
         }
         
-        Messaging.messaging().token { token, _ in
-          if let token = token {
-              self.setDeviceToken(deviceToken: token)
-          }
+        let token = await Messaging.messaging().getToken()
+        if token != nil {
+            await self.setDeviceToken(deviceToken: token!)
         }
     }
     
-    public func setDeviceToken(deviceToken: String, uid: String? = nil) {
+    public func setDeviceToken(deviceToken: String, uid: String? = nil) async {
         UserDefaults.standard.setValue(deviceToken, forKey: Constants.deviceToken)
         
         let uid = userId(uid: uid)
         let data: [String : Any] = ["device_token": deviceToken, "device_platform": "ios", "app_version": Bundle.version, "app_build": Bundle.build, "app_last_active": Date()]
         
-        try? Network.shared.request(.setDeviceToken(uid: uid, data: data.toData))
+        let _ = try? await Network.shared.request(.setDeviceToken(uid: uid, data: data.toData))
         guard UserDefaults.standard.value(forKey: Constants.hasUsageActivity) as? Bool ?? false else {
             UserDefaults.standard.setValue(true, forKey: Constants.hasUsageActivity)
             return
         }
     }
     
-    public func logout(deviceToken: String? = nil, uid: String? = nil) {
+    public func logout(deviceToken: String? = nil, uid: String? = nil) async {
         let uid = userId(uid: uid)
         let token = deviceToken ?? UserDefaults.standard.value(forKey: Constants.deviceToken) as? String ?? ""
         
-        try? Network.shared.request(.logout(uid: uid, deviceToken: token))
+        let _ = try? await Network.shared.request(.logout(uid: uid, deviceToken: token))
     }
     
-    public func addToAccount(aid: String, role: String? = nil, uid: String? = nil) {
+    public func addToAccount(aid: String, role: String? = nil, uid: String? = nil) async {
         let uid = userId(uid: uid)
         var account: [String : Any] = ["id": aid]
         if role != nil {
@@ -92,43 +91,43 @@ public final class Engage: EngageProtocol {
         }
         let accounts = [account]
         let data: [String : Any] = ["accounts": accounts]
-        try? Network.shared.request(.addToAccount(uid: uid, data: data.toData))
+        let _ = try? await Network.shared.request(.addToAccount(uid: uid, data: data.toData))
     }
     
-    public func addAttributes(properties: [String : Any], uid: String? = nil) {
+    public func addAttributes(properties: [String : Any], uid: String? = nil) async {
         let uid = userId(uid: uid)
-        identify(uid: uid, properties: properties)
+        await identify(uid: uid, properties: properties)
     }
     
-    public func removeFromAccount(aid: String, uid: String? = nil) {
+    public func removeFromAccount(aid: String, uid: String? = nil) async {
         let uid = userId(uid: uid)
-        try? Network.shared.request(.removeFromAccount(uid: uid, aid: aid))
+        let _ = try? await Network.shared.request(.removeFromAccount(uid: uid, aid: aid))
     }
     
-    public func changeAccountRole(aid: String, role: String, uid: String? = nil) {
+    public func changeAccountRole(aid: String, role: String, uid: String? = nil) async {
         let uid = userId(uid: uid)
         let data: [String : Any] = ["role": role]
-        try? Network.shared.request(.changeAccountRole(uid: uid, aid: aid, data: data.toData))
+        let _ = try? await Network.shared.request(.changeAccountRole(uid: uid, aid: aid, data: data.toData))
     }
     
-    public func convertToCustomer(uid: String? = nil) {
+    public func convertToCustomer(uid: String? = nil) async {
         let uid = userId(uid: uid)
         let data: [String : Any] = ["type": "customer"]
-        try? Network.shared.request(.convertToCustomer(uid: uid, data: data.toData))
+        let _ = try? await Network.shared.request(.convertToCustomer(uid: uid, data: data.toData))
     }
     
-    public func convertToAccount(uid: String? = nil) {
+    public func convertToAccount(uid: String? = nil) async {
         let uid = userId(uid: uid)
         let data: [String : Any] = ["type": "account"]
-        try? Network.shared.request(.convertToCustomer(uid: uid, data: data.toData))
+        let _ = try? await Network.shared.request(.convertToCustomer(uid: uid, data: data.toData))
     }
     
-    public func merge(source: String, destination: String) {
+    public func merge(source: String, destination: String) async {
         let data: [String : Any] = ["source": source, "destination": destination]
-        try? Network.shared.request(.merge(data: data.toData))
+        let _ = try? await Network.shared.request(.merge(data: data.toData))
     }
     
-    public func track(event: String, value: Any? = nil, date: Date? = nil, uid: String? = nil) {
+    public func track(event: String, value: Any? = nil, date: Date? = nil, uid: String? = nil) async {
         let uid = userId(uid: uid)
         var data: [String : Any] = [:]
         data["event"] = event
@@ -142,7 +141,7 @@ public final class Engage: EngageProtocol {
         if (date != nil) {
             data["timestamp"] = date
         }
-        try? Network.shared.request(.track(uid: uid, data: data.toData))
+        let _ = try? await Network.shared.request(.track(uid: uid, data: data.toData))
         guard UserDefaults.standard.value(forKey: Constants.hasUsageActivity) as? Bool ?? false else {
             UserDefaults.standard.setValue(true, forKey: Constants.hasUsageActivity)
             return
@@ -155,5 +154,23 @@ public final class Engage: EngageProtocol {
     
     public func onMessageReceived(_ handler: @escaping ([AnyHashable : Any]) -> Void) {
         NotificationHandler.shared.setOnMessageReceived(handler)
+    }
+}
+
+extension Messaging {
+    func getToken() async -> String? {
+        try? await withCheckedThrowingContinuation { continuation in
+            self.token { token, error in
+                if let error = error {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                guard let token = token else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                continuation.resume(returning: token)
+            }
+        }
     }
 }

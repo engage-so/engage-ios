@@ -8,5 +8,6 @@
 import Foundation
 
 protocol DialogHandlerProtocol {
+    func openChat(uid: String) -> Void
     func showDialog(isCarousel: Bool) -> Void
 }

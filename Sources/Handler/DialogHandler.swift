@@ -10,6 +10,38 @@ import SwiftUI
 final class DialogHandler: DialogHandlerProtocol {
     static let shared = DialogHandler()
     
+    func openChat(uid: String) {
+        guard let keyWindow = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) else {
+            return
+        }
+        let storageService = StorageService()
+        let socketService = SocketService(storageService: storageService)
+        
+        let conf = [
+            "no_chat": false,
+            "ignore_anonymous": false,
+            // Not needed for now
+            // autotrack: {
+            //   pageviews: false,
+            //   buttons: false,
+            //   forms: false
+            // }
+        ]
+        let user = UserModel(
+            id: uid,
+            identified: false
+        )
+                
+        socketService.initSocket(conf: conf, userData: user)
+        
+        let hostingController = UIHostingController(rootView: ChatView(
+            socketService: socketService, userId: uid
+        ))
+        hostingController.modalPresentationStyle = .popover
+        
+        keyWindow.rootViewController?.present(hostingController, animated: true, completion: nil)
+    }
+    
     func showDialog(isCarousel: Bool) {
         guard let keyWindow = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) else {
             return

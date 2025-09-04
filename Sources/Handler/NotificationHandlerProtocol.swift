@@ -9,8 +9,8 @@ import Foundation
 import UserNotifications
 
 public protocol NotificationHandlerProtocol {
-    func trackMessageOpened(userInfo: [AnyHashable : Any]) -> Void
-    func trackMessageDelivered(userInfo: [AnyHashable : Any]) -> Void
+    func trackMessageOpened(userInfo: [AnyHashable : Any]) async -> Void
+    func trackMessageDelivered(userInfo: [AnyHashable : Any]) async -> Void
     func setOnMessageOpened(_ handler: @escaping ([AnyHashable : Any]) -> Void) -> Void
     func setOnMessageReceived(_ handler: @escaping ([AnyHashable : Any]) -> Void) -> Void
     func setAPNsToken(_ deviceToken: Data) -> Void

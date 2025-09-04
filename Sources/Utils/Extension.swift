@@ -27,6 +27,12 @@ extension Dictionary {
     }
 }
 
+extension Data {
+    var toDictionary: [String: Any]? {
+        return try? JSONSerialization.jsonObject(with: self) as? [String: Any]
+    }
+}
+
 extension Bundle {
     static var version: String {
         let version = main.infoDictionary?["CFBundleShortVersionString"] as? String

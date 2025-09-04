@@ -8,5 +8,5 @@
 import Foundation
 
 protocol NetworkProtocol {
-    func request(_ endpoint: Endpoint) throws -> Void
+    func request(_ endpoint: Endpoint) async throws -> (Data, HTTPURLResponse)
 }
