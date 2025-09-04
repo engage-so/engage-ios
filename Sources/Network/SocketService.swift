@@ -22,7 +22,7 @@ class SocketService: ObservableObject {
     private var activeMessage: String?
     private let storageService: StorageService
     
-    @Published var openThreadId: String?
+    @Published var openThreadId: String = ""
     
     init(storageService: StorageService) {
         self.storageService = storageService
@@ -45,7 +45,8 @@ class SocketService: ObservableObject {
         return try await storageService.loadMessages(threadId: "chat_threads_\(threadId)")
     }
     
-    func loadThread(threadId: String) async throws -> [MessageModel] {
+    func loadMessages(_ id: String? = nil) async throws -> [MessageModel] {
+        let threadId = id ?? openThreadId
         var messages = try await storageService.loadMessages(threadId: "chat_threads_\(threadId)")
         if messages.isEmpty {
             do {
@@ -163,7 +164,7 @@ class SocketService: ObservableObject {
         switch data["type"] as? String {
         case "chat":
             if data["parent_id"] as? String != openThreadId {
-                openThreadId = data["parent_id"] as? String
+                openThreadId = data["parent_id"] as? String ?? ""
             }
             let msg: MessageModel = try JSONMapper.decode(data.toData ?? Data())
             onMessageHandlers.forEach { $0(msg) }
@@ -184,7 +185,7 @@ class SocketService: ObservableObject {
         user = userData
         
         
-        openThreadId = nil
+        openThreadId = ""
         Task {
             do {
                 let (data, _) = try await Network.shared.request(.account)

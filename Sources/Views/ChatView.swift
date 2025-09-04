@@ -145,7 +145,7 @@ class ChatViewModel: ObservableObject {
     @Published var sections: [(title: String, data: [MessageModel])] = []
     @Published var agentTyping: Bool = false
     @Published var isLoading: Bool = true
-    @Published var threadId: String?
+    @Published var threadId: String = ""
     let socketService: SocketService
     let userId: String
     private var typingTimer: Timer?
@@ -162,12 +162,10 @@ class ChatViewModel: ObservableObject {
     }
     
     private func setup() async {
-        if let threadId = threadId {
-            do {
-                messages = try await socketService.loadThread(threadId: threadId)
-            } catch {
-                print("Failed to load thread: \(error)")
-            }
+        do {
+            messages = try await socketService.loadMessages()
+        } catch {
+            print("Failed to load thread: \(error)")
         }
         await MainActor.run {
             isLoading = false
@@ -221,7 +219,7 @@ class ChatViewModel: ObservableObject {
     }
     
     func handleSend(input: String) {
-        guard !input.trimmingCharacters(in: .whitespaces).isEmpty, let threadId = threadId else { return }
+        guard !input.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         let tempId = "temp-\(UUID().uuidString)"
         let optimistic = MessageModel(
             messageId: "",
@@ -274,17 +272,19 @@ class ChatViewModel: ObservableObject {
     }
     
     func handleTypingChange(isEditing: Bool, text: String) {
-        guard let threadId = threadId else { return }
+        if (threadId.isEmpty) {
+            return
+        }
         if typingTimer == nil && isEditing {
             socketService.emitTyping(threadId: threadId, isTyping: true)
             typingTimer = Timer.scheduledTimer(withTimeInterval: 4, repeats: false) { [weak self] _ in
-                self?.socketService.emitTyping(threadId: threadId, isTyping: false)
+                self?.socketService.emitTyping(threadId: self?.threadId ?? "", isTyping: false)
                 self?.typingTimer = nil
             }
         } else if isEditing {
             typingTimer?.invalidate()
             typingTimer = Timer.scheduledTimer(withTimeInterval: 4, repeats: false) { [weak self] _ in
-                self?.socketService.emitTyping(threadId: threadId, isTyping: false)
+                self?.socketService.emitTyping(threadId: self?.threadId ?? "", isTyping: false)
                 self?.typingTimer = nil
             }
         }

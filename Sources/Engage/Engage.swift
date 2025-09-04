@@ -169,7 +169,7 @@ extension Messaging {
     func getToken() async -> String? {
         try? await withCheckedThrowingContinuation { continuation in
             self.token { token, error in
-                if let error = error {
+                if error != nil {
                     continuation.resume(returning: nil)
                     return
                 }
