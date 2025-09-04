@@ -119,12 +119,12 @@ extension Endpoint {
             return .post(data: data)
         case .trackNotification(_, let data):
             return .post(data: data)
-        case .loadMessages(let uid, let threadId):
+        case .loadMessages(_, _):
             return .get
-        case .loadThreads(let uid):
+        case .loadThreads(_):
             return .get
         case .sendMessage(let data):
-            return .put(data: data)
+            return .post(data: data)
         case .account:
             return .get
         }
