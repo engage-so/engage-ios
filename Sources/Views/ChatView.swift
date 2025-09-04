@@ -90,6 +90,11 @@ struct ChatView: View {
             )
         }
         .background(Color(hex: 0xF8F9FA))
+        .onChange(of: viewModel.threadId, perform: { _ in
+            Task {
+                await viewModel.setup()
+            }
+        })
     }
 }
 
@@ -156,13 +161,11 @@ class ChatViewModel: ObservableObject {
         self.userId = userId
         socketService.$openThreadId
                     .assign(to: &$threadId)
-        Task {
-            await setup()
-        }
     }
     
-    private func setup() async {
+    func setup() async {
         do {
+            messages = []
             messages = try await socketService.loadMessages()
         } catch {
             print("Failed to load thread: \(error)")
