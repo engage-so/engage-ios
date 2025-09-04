@@ -155,6 +155,14 @@ public final class Engage: EngageProtocol {
     public func onMessageReceived(_ handler: @escaping ([AnyHashable : Any]) -> Void) {
         NotificationHandler.shared.setOnMessageReceived(handler)
     }
+    
+    public func showDialog(isCarousel: Bool) {
+        DialogHandler.shared.showDialog(isCarousel: isCarousel)
+    }
+    
+    public func openChat(uid: String) {
+        DialogHandler.shared.openChat(uid: uid)
+    }
 }
 
 extension Messaging {
