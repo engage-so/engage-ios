@@ -15,7 +15,7 @@ final class Network: NetworkProtocol {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
         }
-        print("Engage: \(httpResponse.statusCode)")
+        print("Engage: \(httpResponse.statusCode) - \(endpoint.path) - \(httpResponse.description)")
         return (data, httpResponse)
     }
 }
