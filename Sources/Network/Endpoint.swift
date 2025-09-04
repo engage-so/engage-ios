@@ -51,9 +51,9 @@ extension Endpoint {
         case .trackNotification(let id, _):
             return "/v1/messages/mobile/push/\(id)/track"
         case .loadMessages(let uid, let threadId):
-            return "/v1/messages/chat/\(threadId)?uid=\(uid)"
+            return "/v1/messages/chat/\(threadId)"
         case .loadThreads(let uid):
-            return "/v1/messages/chat?uid=\(uid)"
+            return "/v1/messages/chat"
         case .sendMessage(_):
             return "/v1/messages/chat"
         case .account:
@@ -63,6 +63,10 @@ extension Endpoint {
     
     var queryItems: [String: String] {
         switch self {
+        case .loadMessages(let uid, _):
+            return ["uid": uid]
+        case .loadThreads(let uid):
+            return ["uid": uid]
         default:
             return [:]
         }
