@@ -191,7 +191,9 @@ class SocketService: ObservableObject {
                 let (data, _) = try await Network.shared.request(.account)
                 account = try JSONMapper.decode(data)
                 let _ = try await loadRecentThreads()
-            } catch {}
+            } catch {
+                print("Init Socket Error \(error.localizedDescription)")
+            }
         }
         
         
