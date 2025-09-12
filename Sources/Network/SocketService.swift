@@ -9,27 +9,36 @@ import Foundation
 import SocketIO
 
 class SocketService: ObservableObject {
-    private let socketUrl = "https://ws.engage.so/webpush"
-    private var socket: SocketIOClient?
+    let manager = SocketManager(socketURL: URL(string: "https://ws.engage.so")!, config: [.log(true), .compress, .reconnects(true), .forcePolling(false)])
+    private var socket: SocketIOClient
     private var socketDisconnected = false
     private var allowChat = true
     private var onMessageHandlers: [(MessageModel) -> Void] = []
     private var onTypingHandlers: [(Bool, [String: Any]) -> Void] = []
     private var user = UserModel(id: "")
     private var account = AccountModel()
-    private var agentsOnlineCount = 0
     private var activeMessageListeners: [(String) -> Void] = []
     private var activeMessage: String?
     private let storageService: StorageService
     
-    @Published var openThreadId: String = ""
+    @Published var openThreadId: String = "" {
+            didSet {
+                objectWillChange.send() // Ensure iOS 13 compatibility
+            }
+        }
+    @Published var agentsOnlineCount: Int = 0 {
+            didSet {
+                objectWillChange.send() // Ensure iOS 13 compatibility
+            }
+        }
     
     init(storageService: StorageService) {
         self.storageService = storageService
+        self.socket = manager.socket(forNamespace: "/webpush")
     }
     
     private func joinRoom() {
-        guard let socket = socket, let accountId = account.id else { return }
+        guard let accountId = account.id else { return }
         socket.emit("room", accountId)
         socket.emit("room", "\(accountId):\(user.id)")
     }
@@ -58,11 +67,13 @@ class SocketService: ObservableObject {
                 
                 let messagesJSONData = try JSONSerialization.data(withJSONObject: messagesData)
                 messages = try JSONMapper.decode(messagesJSONData)
-                if (messages.isEmpty) {
+                if (!messages.isEmpty) {
                     try await storageService.clear("chat_threads_\(threadId)")
                     let _ = try await persistMessage(threadId: threadId, messages: messages)
                 }
-            } catch {}
+            } catch {
+                print("ERROR \(error.localizedDescription)")
+            }
         }
         
         return messages
@@ -75,7 +86,7 @@ class SocketService: ObservableObject {
             for thread in threads {
                 if thread.status == "open" {
                     openThreadId = thread.id
-                    setActiveMessage(thread.excerpt)
+                    setActiveMessage(thread.excerpt ?? "")
                 }
             }
             try await storageService.clear("chat_threads")
@@ -96,7 +107,7 @@ class SocketService: ObservableObject {
             formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
             formatter.locale = Locale.current
             
-            guard let parsedDate = formatter.date(from: thread.lastUpdated) else { return }
+            guard let parsedDate = formatter.date(from: thread.lastUpdated ?? "") else { return }
             
             if (parsedDate < thirtyDaysAgo) {
                 try await storageService.clear("chat_threads_\(thread.id)")
@@ -142,7 +153,7 @@ class SocketService: ObservableObject {
         func reconnect() {
             guard socketDisconnected, attempts < maxAttempts else { return }
             attempts += 1
-            socket?.connect()
+            socket.connect()
             let jitter = delay * jitterFactor * Double.random(in: 0...1)
             delay = min(delay * 1.5 + jitter, maxDelay)
             Task {
@@ -163,15 +174,17 @@ class SocketService: ObservableObject {
     private func onNewNotification(data: [String: Any]) async throws {
         switch data["type"] as? String {
         case "chat":
-            if data["parent_id"] as? String != openThreadId {
-                openThreadId = data["parent_id"] as? String ?? ""
-            }
-            let msg: MessageModel = try JSONMapper.decode(data.toData ?? Data())
-            onMessageHandlers.forEach { $0(msg) }
-            setActiveMessage(msg.body)
             do {
+                if data["parent_id"] as? String != openThreadId {
+                    openThreadId = data["parent_id"] as? String ?? ""
+                }
+                let msg: MessageModel = try JSONMapper.decode(data.toData ?? Data())
+                onMessageHandlers.forEach { $0(msg) }
+                setActiveMessage(msg.body)
                 let _ = try await persistMessage(threadId: msg.parentId, messages: [msg])
-            } catch {}
+            } catch {
+                print("onNewNotification - chat \(error.localizedDescription)")
+            }
         case "typing:start":
             onTypingHandlers.forEach { $0(true, data) }
         case "typing:stop":
@@ -183,14 +196,12 @@ class SocketService: ObservableObject {
     
     func initSocket(conf: [String: Any], userData: UserModel) {
         user = userData
-        
-        
         openThreadId = ""
         Task {
             do {
                 let (data, _) = try await Network.shared.request(.account)
-                let _ = try await loadRecentThreads()
                 account = try JSONMapper.decode(data)
+                let _ = try await loadRecentThreads()
             } catch {
                 print("Init Socket Error \(error.localizedDescription)")
             }
@@ -200,38 +211,40 @@ class SocketService: ObservableObject {
         
         if conf["no_chat"] as? Bool == true || (conf["ignore_anonymous"] as? Bool == true && !user.identified) {
             allowChat = false
-            socket?.disconnect()
+            socket.disconnect()
             return
         }
         
         allowChat = true
-        let manager = SocketManager(socketURL: URL(string: socketUrl)!, config: [.log(true), .compress])
-        socket = manager.defaultSocket
-        socket?.on(clientEvent: .connect) { _, _ in self.onSocketConnected() }
-        socket?.on(clientEvent: .disconnect) { _, _ in self.onSocketDisconnected() }
-        socket?.on("agents_online") { data, _ in
+        
+        socket.on(clientEvent: .connect) {[weak self] data, ack in
+            self?.onSocketConnected()
+        }
+        socket.on(clientEvent: .disconnect) {[weak self] data, ack in
+            self?.onSocketDisconnected()
+        }
+        socket.on("agents_online") {[weak self] data, ack in
             if let count = data[0] as? Int {
-                self.onAgentsOnline(count: count)
+                self?.onAgentsOnline(count: count)
             }
         }
-        socket?.on("webpush/notification") { data, _ in
+        socket.on("webpush/notification") {[weak self] data, ack in
+            print("WEB PUSH NOTIFICATION \(data)")
             if let dataDict = data[0] as? [String: Any] {
-                Task { try await self.onNewNotification(data: dataDict) }
+                Task { try await self?.onNewNotification(data: dataDict) }
             }
         }
-        socket?.connect()
+        socket.onAny {print("Got event: \($0.event), with items: \($0.items!)")}
+        socket.connect()
     }
     
     func closeSocket() async throws {
-        socket?.disconnect()
+        socket.disconnect()
         try await storageService.clear("user")
         try await storageService.clear("chat_threads")
     }
     
     func getSocket() throws -> SocketIOClient {
-        guard let socket = socket else {
-            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Socket not initialized. Call initSocket() first."])
-        }
         return socket
     }
     
@@ -256,7 +269,7 @@ class SocketService: ObservableObject {
     }
     
     func emitTyping(threadId: String, isTyping: Bool) {
-        socket?.emit(isTyping ? "typing:start" : "typing:stop", [
+        socket.emit(isTyping ? "typing:start" : "typing:stop", [
             "parent_id": threadId,
             "user_id": user.id,
             "org_id": account.id ?? ""

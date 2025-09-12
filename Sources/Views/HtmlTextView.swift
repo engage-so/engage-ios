@@ -6,69 +6,84 @@
 //
 
 import SwiftUI
-import WebKit
 
 struct HtmlTextView: View {
-    let html: String
+    let text: String
     let isHtml: Bool
     
-    init(html: String) {
-        self.html = html
+    init(text: String) {
+        self.text = text
         // Check for HTML tags using NSRegularExpression
         let regex = try? NSRegularExpression(pattern: "<[a-zA-Z][^>]*>")
-        self.isHtml = regex?.firstMatch(in: html, range: NSRange(location: 0, length: html.utf16.count)) != nil
+        self.isHtml = regex?.firstMatch(in: text, range: NSRange(location: 0, length: text.utf16.count)) != nil
     }
     
     var body: some View {
         if isHtml {
-            WebView(html: html)
+            Text(.init(text.htmlToMarkDown()))
         } else {
-            Text(html)
+            Text(text)
         }
     }
 }
 
-struct WebView: UIViewRepresentable {
-    let html: String
-    
-    func makeUIView(context: Context) -> WKWebView {
-        let webView = WKWebView()
-        webView.isOpaque = false
-        webView.backgroundColor = .clear
-        return webView
-    }
-    
-    func updateUIView(_ uiView: WKWebView, context: Context) {
-        // Basic CSS to ensure readability and transparent background
-        let styledHtml = """
-        <html>
-        <head>
-        <style>
-        body { 
-            background: transparent; 
-            color: \(UIColor.label.hexString); 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-size: 16px;
-        }
-        a { color: #0000EE; text-decoration: underline; }
-        </style>
-        </head>
-        <body>
-        \(html)
-        </body>
-        </html>
-        """
-        uiView.loadHTMLString(styledHtml, baseURL: nil)
-    }
-}
+extension String {
+    func htmlToMarkDown() -> String {
+        var text = self
+        var loop = true
 
-// Extension to get hex color for system label
-extension UIColor {
-    var hexString: String {
-        let components = cgColor.components ?? [0, 0, 0, 1]
-        let r = components[0]
-        let g = components[1]
-        let b = components[2]
-        return String(format: "#%02X%02X%02X", Int(r * 255), Int(g * 255), Int(b * 255))
+        // Replace line feeds with nothing, which is how HTML notation is read in browsers
+        text = text.replacingOccurrences(of: "\n", with: "")
+        
+        text = text.replacingOccurrences(of: "<html>", with: "")
+        text = text.replacingOccurrences(of: "</html>", with: "")
+        text = text.replacingOccurrences(of: "<head>", with: "")
+        text = text.replacingOccurrences(of: "</head>", with: "")
+        text = text.replacingOccurrences(of: "<body>", with: "")
+        text = text.replacingOccurrences(of: "</body>", with: "")
+        text = text.replacingOccurrences(of: "<p>", with: "")
+        text = text.replacingOccurrences(of: "</p>", with: "")
+
+        // Line breaks
+        text = text.replacingOccurrences(of: "<div>", with: "\n")
+        text = text.replacingOccurrences(of: "</div>", with: "")
+        text = text.replacingOccurrences(of: "<br>", with: "\n")
+
+        // Text formatting
+        text = text.replacingOccurrences(of: "<strong>", with: "**")
+        text = text.replacingOccurrences(of: "</strong>", with: "**")
+        text = text.replacingOccurrences(of: "<b>", with: "**")
+        text = text.replacingOccurrences(of: "</b>", with: "**")
+        text = text.replacingOccurrences(of: "<em>", with: "*")
+        text = text.replacingOccurrences(of: "</em>", with: "*")
+        text = text.replacingOccurrences(of: "<i>", with: "*")
+        text = text.replacingOccurrences(of: "</i>", with: "*")
+
+        // Replace hyperlinks block
+        loop = true
+        while loop {
+            let hyperlinkPattern = "<a[\\s\\S]*?href\\s*=\\s*\"([^\"]+)\"[\\s\\S]*?>([\\s\\S]*?)</a>"
+            do {
+                let regex = try NSRegularExpression(pattern: hyperlinkPattern, options: [.caseInsensitive])
+                let range = NSRange(location: 0, length: text.utf16.count)
+                if let match = regex.firstMatch(in: text, options: [], range: range) {
+                    let fullMatchRange = Range(match.range, in: text)!
+                    let hrefRange = Range(match.range(at: 1), in: text)!
+                    let contentRange = Range(match.range(at: 2), in: text)!
+                    
+                    let href = String(text[hrefRange])
+                    let content = String(text[contentRange])
+                    let markDownLink = "[\(content)](\(href))"
+                    text = text.replacingCharacters(in: fullMatchRange, with: markDownLink)
+                } else {
+                    loop = false
+                }
+            } catch {
+                print("Error with hyperlink regex: \(error)")
+                loop = false
+            }
+        }
+
+        return text
     }
 }

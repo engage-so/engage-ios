@@ -28,8 +28,8 @@ extension Dictionary {
 }
 
 extension Data {
-    var toDictionary: [String: Any]? {
-        return try? JSONSerialization.jsonObject(with: self) as? [String: Any]
+    var toJSON: String {
+        return String(data: self, encoding: .utf8) ?? "Invalid data"
     }
 }
 

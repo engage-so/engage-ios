@@ -7,32 +7,32 @@
 
 import Foundation
 
-struct MessageModel: Codable, Identifiable {
+struct MessageModel: Codable {
     let messageId: String
-    let from: UserModel
+//    let from: UserModel
     let body: String
-    let uid: String
+    let uid: String?
     let user: String
     let parentId: String
     let date: String
     let lastUpdated: String
     let id: String
-    let outbound: Bool
-    let read: Bool
-    let cid: String
+    let outbound: Bool?
+    let read: Bool?
+    let cid: String?
     let status: String?
 }
 
-struct ThreadModel: Codable, Identifiable {
+struct ThreadModel: Codable {
     let id: String
-    let from: UserModel
+//    let from: UserModel?
     let uid: String
-    let excerpt: String
-    let inbound: Bool
-    let status: String
-    let read: [String]
-    let date: String
-    let lastUpdated: String
+    let excerpt: String?
+    let inbound: Bool?
+    let status: String?
+    let read: [String]?
+    let date: String?
+    let lastUpdated: String?
 }
 
 struct UserModel: Codable {
@@ -55,18 +55,18 @@ struct FeaturesModel: Codable {
 }
 
 struct HelpModel: Codable {
-    let site: String
-    let defaultLocale: String
-    let sk: String
+    let site: String?
+    let defaultLocale: String?
+    let sk: String?
 }
 
 struct ChatModel: Codable {
     let title: String
     let subtitle: String
     let welcome: String?
-    let ignoreAnonymous: Bool
-    let availability: [String]
-    let position: String
+    let ignoreAnonymous: Bool?
+    let availability: [String]?
+    let position: String?
 }
 
 struct WidgetModel: Codable {

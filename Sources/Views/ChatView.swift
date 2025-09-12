@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SocketIO
+import Combine
 
 struct ChatView: View {
     @ObservedObject private var viewModel: ChatViewModel
@@ -29,16 +30,26 @@ struct ChatView: View {
             }
             
             // Message List
-            List {
-                ForEach(viewModel.sections, id: \.title) { section in
-                    Section(header: SectionHeader(title: section.title)) {
-                        ForEach(section.data, id: \.id) { message in
-                            MessageBubble(message: message, userId: viewModel.userId)
+            ScrollViewReader { proxy in
+                List {
+                    ForEach(viewModel.sections, id: \.title) { section in
+                        Section(header: SectionHeader(title: section.title)) {
+                            ForEach(section.data, id: \.id) { message in
+                                MessageBubble(message: message, userId: viewModel.userId)
+                            }
+                        }
+                    }
+                }
+                .listStyle(.plain)
+                .onChange(of: viewModel.messages.count) { _ in
+                    // Scroll to the last message when new message added
+                    if let lastMessage = viewModel.messages.last {
+                        withAnimation {
+                            proxy.scrollTo(lastMessage.id, anchor: .bottom)
                         }
                     }
                 }
             }
-            .listStyle(.plain)
             
             // Typing indicator
             if viewModel.agentTyping {
@@ -120,24 +131,28 @@ struct MessageBubble: View {
     
     var body: some View {
         HStack {
-            if message.outbound {
+            if message.outbound == true {
                 Spacer()
             }
-            VStack(alignment: message.outbound ? .trailing : .leading) {
-                Text(message.body)
-                    .font(.system(size: 14))
+            VStack(alignment: message.outbound == true ? .trailing : .leading) {
+                HtmlTextView(text: message.body)
                     .foregroundColor(.black)
                     .padding(10)
-                    .background(message.outbound ? Color(hex: 0xE8EAED) : .white)
+                    .background(message.outbound == true ? Color(hex: 0xE8EAED) :  Color(hex: 0xE8EAED))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .frame(maxWidth: UIScreen.main.bounds.width * 0.8, alignment: message.outbound ? .trailing : .leading)
+                    .frame(maxWidth: UIScreen.main.bounds.width * 0.8, alignment: message.outbound == true ? .trailing : .leading)
+                
                 
                 Text(message.lastUpdated.formattedDate())
+                    .foregroundColor(.black)
                     .font(.system(size: 12))
-                    .foregroundColor(Color(hex: 0x777777))
                     .padding(.top, 4)
             }
-            if !message.outbound {
+            .onTapGesture {
+                print(message.body)
+                print(message.lastUpdated)
+            }
+            if message.outbound != true {
                 Spacer()
             }
         }
@@ -145,22 +160,36 @@ struct MessageBubble: View {
     }
 }
 
+@MainActor
 class ChatViewModel: ObservableObject {
     @Published var messages: [MessageModel] = []
     @Published var sections: [(title: String, data: [MessageModel])] = []
     @Published var agentTyping: Bool = false
     @Published var isLoading: Bool = true
     @Published var threadId: String = ""
+    @Published var agentsOnlineCount: Int = 0
     let socketService: SocketService
     let userId: String
     private var typingTimer: Timer?
     private let clientId = UUID().uuidString
+    private var cancellables = Set<AnyCancellable>()
     
     init(socketService: SocketService, userId: String) {
         self.socketService = socketService
         self.userId = userId
+        // Bind openThreadId to threadId on main thread
         socketService.$openThreadId
-                    .assign(to: &$threadId)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] newValue in
+                self?.threadId = newValue ?? ""
+            }
+            .store(in: &cancellables)
+        socketService.$agentsOnlineCount
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] newValue in
+                self?.agentsOnlineCount = newValue ?? 0
+            }
+            .store(in: &cancellables)
     }
     
     func setup() async {
@@ -176,7 +205,7 @@ class ChatViewModel: ObservableObject {
         }
         
         let offMsg = socketService.onMessage { msg in
-            if msg.parentId == self.threadId && msg.uid == self.userId && msg.cid != self.clientId {
+            if msg.parentId == self.threadId && msg.uid == self.userId {
                 DispatchQueue.main.async {
                     self.messages.append(msg)
                     self.messages.sort { (msg1: MessageModel, msg2: MessageModel) -> Bool in
@@ -191,16 +220,17 @@ class ChatViewModel: ObservableObject {
         }
         
         let offTyping = socketService.onTyping { isTyping, data in
-            if (data["parent_id"] as? String) == self.threadId {
-                DispatchQueue.main.async {
-                    self.agentTyping = isTyping
-                    if isTyping {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                            self.agentTyping = false
-                        }
+            print("TYPING ==== \(data)")
+            //            if (data["parent_id"] as? String) == self.threadId {
+            DispatchQueue.main.async {
+                self.agentTyping = isTyping
+                if isTyping {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                        self.agentTyping = false
                     }
                 }
             }
+            //            }
         }
         
         // Cleanup is handled by SwiftUI's view lifecycle
@@ -215,10 +245,16 @@ class ChatViewModel: ObservableObject {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         let groups = Dictionary(grouping: messages) { message in
-            message.lastUpdated.formattedDate()
+            message.lastUpdated.formattedDate(showTime: false)
         }
         sections = groups.map { (title: $0.key, data: $0.value) }
-            .sorted { $0.title < $1.title }
+            .sorted { (first, second) in
+                guard let firstDate = first.title.toSectionDate(),
+                      let secondDate = second.title.toSectionDate() else {
+                    return first.title < second.title // Fallback to string comparison
+                }
+                return firstDate < secondDate
+            }
     }
     
     func handleSend(input: String) {
@@ -226,7 +262,7 @@ class ChatViewModel: ObservableObject {
         let tempId = "temp-\(UUID().uuidString)"
         let optimistic = MessageModel(
             messageId: "",
-            from: UserModel(id: userId),
+            //            from: UserModel(id: userId),
             body: input,
             uid: userId,
             user: "",
@@ -255,7 +291,7 @@ class ChatViewModel: ObservableObject {
                 await MainActor.run {
                     messages = messages.map { $0.id == tempId ? MessageModel(
                         messageId: $0.messageId,
-                        from: $0.from,
+                        //                        from: $0.from,
                         body: $0.body,
                         uid: $0.uid,
                         user: $0.user,
@@ -305,12 +341,26 @@ extension Color {
 }
 
 extension String {
-    func formattedDate() -> String {
+    func formattedDate(showTime: Bool = true) -> String {
         let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let date = formatter.date(from: self) {
-            return DateFormatter.localizedString(from: date, dateStyle: .medium, timeStyle: .short)
+            return DateFormatter.localizedString(from: date, dateStyle: .medium, timeStyle: showTime ? .short : .none)
         }
         return ""
+    }
+    
+    func toDate() -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: self)
+    }
+    
+    func toSectionDate() -> Date? {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd MMM yyyy"
+        formatter.locale = Locale(identifier: "en_US_POSIX") // Ensures consistent month parsing
+        return formatter.date(from: self)
     }
 }
 
