@@ -74,6 +74,14 @@ extension Color {
             return Color(uiColor)
         }
     }
+    
+    init(hex: UInt) {
+        self.init(
+            red: Double((hex >> 16) & 0xFF) / 255,
+            green: Double((hex >> 8) & 0xFF) / 255,
+            blue: Double(hex & 0xFF) / 255
+        )
+    }
 }
 
 extension View {
@@ -84,5 +92,38 @@ extension View {
         } else {
             self
         }
+    }
+}
+
+extension String {
+    func formattedDate(showTime: Bool = true) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: self) {
+            return DateFormatter.localizedString(from: date, dateStyle: .medium, timeStyle: showTime ? .short : .none)
+        }
+        return ""
+    }
+    
+    func toDate() -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: self)
+    }
+    
+    func toSectionDate() -> Date? {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd MMM yyyy"
+        formatter.locale = Locale(identifier: "en_US_POSIX") // Ensures consistent month parsing
+        return formatter.date(from: self)
+    }
+}
+
+extension Date {
+    func toISO8601String() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        return formatter.string(from: self)
     }
 }

@@ -56,6 +56,8 @@ class SocketService: ObservableObject {
     
     func loadMessages(_ id: String? = nil) async throws -> [MessageModel] {
         let threadId = id ?? openThreadId
+        guard !threadId.isEmpty else { return [] }
+            
         var messages = try await storageService.loadMessages(threadId: "chat_threads_\(threadId)")
         if messages.isEmpty {
             do {
