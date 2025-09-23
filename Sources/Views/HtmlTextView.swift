@@ -126,13 +126,13 @@ extension Text {
                 }
             }
             
-            if let link = attrs[NSAttributedString.Key.link] as? NSString {
-                if let underlineColor = (attrs[NSAttributedString.Key.underlineColor] as? UIColor) {
-                    t = t.underline(true, color: Color(underlineColor))
-                } else {
-                    t = t.underline(true)
-                }
-            }
+//            if let link = attrs[NSAttributedString.Key.link] as? NSString {
+//                if let underlineColor = (attrs[NSAttributedString.Key.underlineColor] as? UIColor) {
+//                    t = t.underline(true, color: Color(underlineColor))
+//                } else {
+//                    t = t.underline(true)
+//                }
+//            }
             
             self = self + t
             

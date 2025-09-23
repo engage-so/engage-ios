@@ -17,9 +17,7 @@ struct EngageWidget: View {
     
     var body: some View {
         NavigationView {
-            NavigationLink(destination: ChatView(), label: {
-                Text("Send a message")
-            })
+            HomeView()
         }
         .onChange(of: viewModel.threadId, perform: { _ in
             Task {
@@ -37,31 +35,21 @@ class EngageWidgetModel: ObservableObject {
     @Published var sections: [(title: String, data: [MessageModel])] = []
     @Published var agentTyping: Bool = false
     @Published var isLoading: Bool = true
+    @Published var activeMessage: String?
     @Published var threadId: String = ""
     @Published var agentsOnlineCount: Int = 0
     let userId: String
+    private let storageService: StorageService
     private let socketService: SocketService
     private var typingTimer: Timer?
     private let clientId = UUID().uuidString
-    private var cancellables = Set<AnyCancellable>()
+    private var cleanUp: [() -> Void] = []
     
     init(userId: String) {
-        let storageService = StorageService()
-        self.socketService = SocketService(storageService: storageService)
+        self.storageService = StorageService()
+        self.socketService = SocketService()
         self.userId = userId
-        // Bind openThreadId to threadId on main thread
-        socketService.$openThreadId
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] newValue in
-                self?.threadId = newValue
-            }
-            .store(in: &cancellables)
-        socketService.$agentsOnlineCount
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] newValue in
-                self?.agentsOnlineCount = newValue
-            }
-            .store(in: &cancellables)
+        
         
         let conf = [
             "no_chat": false,
@@ -79,12 +67,16 @@ class EngageWidgetModel: ObservableObject {
         )
         
         socketService.initSocket(conf: conf, userData: user)
+        Task {
+            await cleanupOldThreads()
+            await loadRecentThreads()
+        }
     }
     
     func setup() async {
         do {
             messages = []
-            messages = try await socketService.loadMessages()
+            messages = try await loadMessages()
         } catch {
             print("Failed to load thread: \(error)")
         }
@@ -93,36 +85,55 @@ class EngageWidgetModel: ObservableObject {
             updateSections()
         }
         
-        let offMsg = socketService.onMessage { msg in
-            if msg.parentId == self.threadId && msg.uid == self.userId {
-                DispatchQueue.main.async {
-                    self.messages.append(msg)
-                    self.messages.sort { (msg1: MessageModel, msg2: MessageModel) -> Bool in
-                        let formatter = ISO8601DateFormatter()
-                        let date1 = formatter.date(from: msg1.lastUpdated) ?? Date.distantPast
-                        let date2 = formatter.date(from: msg2.lastUpdated) ?? Date.distantPast
-                        return date1 < date2
-                    }
-                    self.updateSections()
-                }
+        let offAgentsOnline = socketService.onAgentsOnline { count in
+            DispatchQueue.main.async {
+                self.agentsOnlineCount = count
             }
         }
         
-        let offTyping = socketService.onTyping { isTyping, data in
-            print("TYPING ==== \(data)")
-            //            if (data["parent_id"] as? String) == self.threadId {
+        let offNewWebpushNotification = socketService.onWebpushNotification { data in
             DispatchQueue.main.async {
-                self.agentTyping = isTyping
-                if isTyping {
+                switch data["type"] as? String {
+                case "chat":
+                    do {
+                        if data["parent_id"] as? String != self.threadId {
+                            self.threadId = data["parent_id"] as? String ?? ""
+                        }
+                        let msg: MessageModel = try JSONMapper.decode(data.toData ?? Data())
+                        self.messages.append(msg)
+                        self.messages.sort { (msg1: MessageModel, msg2: MessageModel) -> Bool in
+                            let formatter = ISO8601DateFormatter()
+                            let date1 = formatter.date(from: msg1.lastUpdated) ?? Date.distantPast
+                            let date2 = formatter.date(from: msg2.lastUpdated) ?? Date.distantPast
+                            return date1 < date2
+                        }
+                        self.updateSections()
+                        self.setActiveMessage(msg.body)
+                        Task {
+                            try await self.persistMessage(threadId: msg.parentId, messages: [msg])
+                        }
+                    } catch {
+                        print("onNewNotification - chat \(error.localizedDescription)")
+                    }
+                case "typing:start":
+                    self.agentTyping = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
                         self.agentTyping = false
                     }
+                    
+                case "typing:stop":
+                    self.agentTyping = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                        self.agentTyping = false
+                    }
+                default:
+                    break
                 }
             }
-            //            }
         }
         
         // Cleanup is handled by SwiftUI's view lifecycle
+        cleanUp = [offAgentsOnline, offNewWebpushNotification]
     }
     
     private func updateSections() {
@@ -175,7 +186,7 @@ class EngageWidgetModel: ObservableObject {
         
         Task {
             do {
-                try await socketService.sendMessage(threadId: threadId, message: optimistic)
+                try await self.sendMessage(threadId: threadId, message: optimistic)
             } catch {
                 await MainActor.run {
                     messages = messages.map { $0.id == tempId ? MessageModel(
@@ -206,15 +217,126 @@ class EngageWidgetModel: ObservableObject {
         if typingTimer == nil && isEditing {
             socketService.emitTyping(threadId: threadId, isTyping: true)
             typingTimer = Timer.scheduledTimer(withTimeInterval: 4, repeats: false) { [weak self] _ in
-                self?.socketService.emitTyping(threadId: self?.threadId ?? "", isTyping: false)
-                self?.typingTimer = nil
+                Task { @MainActor in
+                    guard let self = self else { return }
+                    self.socketService.emitTyping(threadId: self.threadId, isTyping: false)
+                    self.typingTimer = nil
+                }
             }
         } else if isEditing {
             typingTimer?.invalidate()
             typingTimer = Timer.scheduledTimer(withTimeInterval: 4, repeats: false) { [weak self] _ in
-                self?.socketService.emitTyping(threadId: self?.threadId ?? "", isTyping: false)
-                self?.typingTimer = nil
+                Task { @MainActor in
+                    guard let self = self else { return }
+                    self.socketService.emitTyping(threadId: self.threadId, isTyping: false)
+                    self.typingTimer = nil
+                }
             }
+        }
+    }
+    
+    func getMessages(threadId: String) async throws -> [MessageModel] {
+        guard !threadId.isEmpty else { return [] }
+        return try await storageService.loadMessages(threadId: "chat_threads_\(threadId)")
+    }
+    
+    func loadMessages() async throws -> [MessageModel] {
+        guard !threadId.isEmpty else { return [] }
+        
+        var messages = try await storageService.loadMessages(threadId: "chat_threads_\(threadId)")
+        if messages.isEmpty {
+            do {
+                let (data, _) = try await Network.shared.request(.loadMessages(uid: userId, threadId: threadId))
+                let jsonObject = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                guard let messagesData = jsonObject?["messages"] else {
+                    throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No 'messages' key found"])
+                }
+                
+                let messagesJSONData = try JSONSerialization.data(withJSONObject: messagesData)
+                messages = try JSONMapper.decode(messagesJSONData)
+                if (!messages.isEmpty) {
+                    try await storageService.clear("chat_threads_\(threadId)")
+                    let _ = try await persistMessage(threadId: threadId, messages: messages)
+                }
+            } catch {
+                print("ERROR \(error.localizedDescription)")
+            }
+        }
+        
+        return messages
+    }
+    
+    func loadRecentThreads() async {
+        do {
+            let (data, _) = try await Network.shared.request(.loadThreads(uid: userId))
+            let threads: [ThreadModel] = try JSONMapper.decode(data)
+            if (!threads.isEmpty) {
+                for thread in threads {
+                    if thread.status == "open" {
+                        threadId = thread.id
+                        setActiveMessage(thread.excerpt ?? "")
+                    }
+                }
+                try await storageService.clear("chat_threads")
+                try await storageService.saveThreads(key: "chat_threads", threads: threads)
+            }
+        } catch {
+            print(error.localizedDescription)
+        }
+    }
+    
+    private func cleanupOldThreads() async {
+        do {
+            let threads = try await storageService.loadThreads(key: "chat_threads_ids")
+            if (threads.isEmpty) {
+                return
+            }
+            let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+            
+            for thread in threads {
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+                formatter.locale = Locale.current
+                
+                guard let parsedDate = formatter.date(from: thread.lastUpdated ?? "") else { return }
+                
+                if (parsedDate < thirtyDaysAgo) {
+                    try await storageService.clear("chat_threads_\(thread.id)")
+                }
+            }
+        } catch {
+            print(error.localizedDescription)
+        }
+    }
+    
+    private func persistMessage(threadId: String, messages: [MessageModel]) async throws {
+        let oldMsgs = try await storageService.loadMessages(threadId: "chat_threads_\(threadId)")
+        let existingIds = Set(oldMsgs.map { $0.id })
+        let filteredNew = messages.filter { !existingIds.contains($0.id) }
+        let allMessages = (oldMsgs + filteredNew).sorted { (msg1: MessageModel, msg2: MessageModel) -> Bool in
+            msg1.lastUpdated < msg2.lastUpdated
+        }
+        try await storageService.saveMessages(threadId: "chat_threads_\(threadId)", messages: allMessages)
+    }
+    
+    private func setActiveMessage(_ msg: String) {
+        activeMessage = msg
+    }
+    
+    func sendMessage(threadId: String, message: MessageModel) async throws {
+        setActiveMessage(message.body)
+        let dictionary = ["body": message.body, "uid": message.uid, "cid": message.cid]
+        let _ = try await Network.shared.request(.sendMessage(data: dictionary.toData))
+    }
+    
+    func dispose() async throws {
+        do {
+            cleanUp.forEach( { $0() } )
+            try socketService.closeSocket()
+            try await storageService.clear("user")
+            try await storageService.clear("chat_threads")
+        } catch {
+            print(error.localizedDescription)
         }
     }
 }

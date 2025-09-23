@@ -50,9 +50,9 @@ extension Endpoint {
             return "/v1/users/\(uid)/events"
         case .trackNotification(let id, _):
             return "/v1/messages/mobile/push/\(id)/track"
-        case .loadMessages(let uid, let threadId):
+        case .loadMessages(_, let threadId):
             return "/v1/messages/chat/\(threadId)"
-        case .loadThreads(let uid):
+        case .loadThreads(_):
             return "/v1/messages/chat"
         case .sendMessage(_):
             return "/v1/messages/chat"

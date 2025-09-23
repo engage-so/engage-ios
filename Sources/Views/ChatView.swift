@@ -32,7 +32,10 @@ struct ChatView: View {
                                 MessageBubble(message: message)
                             }
                         }
+                        .listRowInsets(EdgeInsets())
+                        .background(.background)
                     }
+                    .listRowSeparator(.hidden)
                 }
                 .listStyle(.plain)
                 .onChange(of: viewModel.messages.count) { _ in
@@ -56,19 +59,11 @@ struct ChatView: View {
             // Input Area
             HStack(alignment: .center, spacing: 8) {
                 HStack {
-                    TextField("Type a message...", text: $input, onEditingChanged: { isEditing in
+                    TextField("Send a message...", text: $input, onEditingChanged: { isEditing in
                         viewModel.handleTypingChange(isEditing: isEditing, text: input)
                     })
-                    .padding(.horizontal, 16)
                     .padding(.vertical, 12)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 24))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 24)
-                            .stroke(Color(hex: 0xE5E7EB), lineWidth: 1)
-                    )
                     
-                    Button(action: {}) { Text("😊") }
                     Button(action: {}) { Text("📎") }
                 }
                 
@@ -76,30 +71,21 @@ struct ChatView: View {
                     viewModel.handleSend(input: input)
                     input = ""
                 }) {
-                    Text("Send")
+                    Image(systemName: "paperplane")
                         .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(Color(hex: 0x0B93F6))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .padding(12)
+                        .background(blue)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color(hex: 0xF8F9FA))
+            .padding()
             .overlay(
                 Rectangle()
                     .frame(height: 1)
-                    .foregroundColor(Color(hex: 0xE5E7EB)),
+                    .foregroundColor(.gray.opacity(0.3)),
                 alignment: .top
             )
         }
-        .background(Color(hex: 0xF8F9FA))
-        .onChange(of: viewModel.threadId, perform: { _ in
-            Task {
-                await viewModel.setup()
-            }
-        })
     }
 }
 
@@ -107,15 +93,22 @@ struct SectionHeader: View {
     let title: String
     
     var body: some View {
-        Text(title)
-            .font(.system(size: 13, weight: .bold))
-            .foregroundColor(Color(hex: 0x374151))
-            .padding(.vertical, 6)
-            .padding(.horizontal, 12)
-            .background(Color(hex: 0xF3F4F6))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .padding(.top, 12)
-            .padding(.bottom, 4)
+        HStack {
+            VStack { Divider() }
+            Text(title)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(.black)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 100)
+                        .stroke(.gray.opacity(0.3), lineWidth: 1)
+                )
+                .padding(.top, 12)
+                .padding(.bottom, 4)
+            VStack { Divider() }
+        }
+        .padding(.horizontal, 16)
     }
 }
 
@@ -130,15 +123,19 @@ struct MessageBubble: View {
             VStack(alignment: message.outbound == true ? .trailing : .leading) {
                 HtmlTextView(text: message.body)
                     .foregroundColor(.black)
-                    .padding(10)
-                    .background(message.outbound == true ? Color(hex: 0xE8EAED) :  Color(hex: 0xE8EAED))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .padding(12)
+                    .background(message.outbound == true ? Color(hex: 0xE8EAED) :  .clear)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18)
+                            .stroke(.gray.opacity(0.3), lineWidth: 1)
+                    )
                     .frame(maxWidth: UIScreen.main.bounds.width * 0.8, alignment: message.outbound == true ? .trailing : .leading)
                 
                 
                 Text(message.lastUpdated.formattedDate())
                     .foregroundColor(.black)
-                    .font(.system(size: 12))
+                    .font(.system(size: 10))
                     .padding(.top, 4)
             }
             .onTapGesture {
@@ -150,5 +147,28 @@ struct MessageBubble: View {
             }
         }
         .padding(.vertical, 6)
+        .padding(.horizontal, 16)
     }
 }
+
+//#Preview {
+//    VStack(spacing: 20) {
+//        SectionHeader(
+//            title: Date().toISO8601String().formattedDate(showTime: false)
+//        )
+//        MessageBubble(message: MessageModel(
+//                messageId: "",
+//                body: "input",
+//                uid: "userId",
+//                user: "",
+//                parentId: "threadId",
+//                date: Date().toISO8601String(),
+//                lastUpdated: Date().toISO8601String(),
+//                id: "tempId",
+//                outbound: true,
+//                read: false,
+//                cid: "clientId",
+//                status: "sending"
+//            ))
+//    }
+//}

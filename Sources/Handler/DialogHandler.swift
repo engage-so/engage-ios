@@ -11,7 +11,8 @@ final class DialogHandler: DialogHandlerProtocol {
     static let shared = DialogHandler()
     
     func openChat(uid: String) {
-        guard let keyWindow = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) else {
+        guard let windowScene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+              let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow }) else {
             return
         }
         
@@ -22,7 +23,8 @@ final class DialogHandler: DialogHandlerProtocol {
     }
     
     func showDialog(isCarousel: Bool) {
-        guard let keyWindow = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) else {
+        guard let windowScene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+              let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow }) else {
             return
         }
         
