@@ -104,10 +104,6 @@ class SocketService {
         socket.connect()
     }
     
-    func closeSocket() throws {
-        socket.disconnect()
-    }
-    
     func getSocket() throws -> SocketIOClient {
         return socket
     }

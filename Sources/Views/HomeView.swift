@@ -39,18 +39,20 @@ struct HomeView: View {
                 
                 /// Message Section
                 VStack(alignment: .leading) {
-                    Text("3 days ago")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                        .padding(.bottom, 4)
-                    Text("What's next? Don't tell me this is how we work now? You ain't responding to me guy why na?")
-                        .font(.body)
-                        .foregroundColor(.black)
-                        .padding(.bottom, 20)
-                        .multilineTextAlignment(.leading)
+                    if viewModel.activeThread != nil {
+                        Text(viewModel.activeThread?.lastUpdated?.formattedDate() ?? "")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                            .padding(.bottom, 4)
+                        HtmlTextView(text: viewModel.activeThread?.excerpt ?? "")
+                            .font(.body)
+                            .padding(.bottom, 20)
+                            .multilineTextAlignment(.leading)
+                    }
+                    
                     NavigationLink(destination: ChatView(), label: {
                         HStack {
-                            Text("Continue Conversation")
+                            Text(viewModel.activeThread != nil ? "Continue Conversation": "Start a Conversation")
                             Spacer()
                             Image(systemName: "chevron.right")
                         }
@@ -73,7 +75,3 @@ struct HomeView: View {
         }
     }
 }
-
-//#Preview {
-//    return EngageWidget(userId: "")
-//}

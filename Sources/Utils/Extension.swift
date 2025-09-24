@@ -127,3 +127,10 @@ extension Date {
         return formatter.string(from: self)
     }
 }
+
+extension UINavigationController {
+  open override func viewWillLayoutSubviews() {
+    super.viewWillLayoutSubviews()
+    navigationBar.topItem?.backButtonDisplayMode = .minimal
+  }
+}

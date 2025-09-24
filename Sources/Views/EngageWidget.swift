@@ -21,6 +21,7 @@ struct EngageWidget: View {
         }
         .onChange(of: viewModel.threadId, perform: { _ in
             Task {
+                await viewModel.dispose()
                 await viewModel.setup()
             }
         })
@@ -35,7 +36,7 @@ class EngageWidgetModel: ObservableObject {
     @Published var sections: [(title: String, data: [MessageModel])] = []
     @Published var agentTyping: Bool = false
     @Published var isLoading: Bool = true
-    @Published var activeMessage: String?
+    @Published var activeThread: ThreadModel?
     @Published var threadId: String = ""
     @Published var agentsOnlineCount: Int = 0
     let userId: String
@@ -76,7 +77,7 @@ class EngageWidgetModel: ObservableObject {
     func setup() async {
         do {
             messages = []
-            messages = try await loadMessages()
+            await loadMessages()
         } catch {
             print("Failed to load thread: \(error)")
         }
@@ -100,15 +101,13 @@ class EngageWidgetModel: ObservableObject {
                             self.threadId = data["parent_id"] as? String ?? ""
                         }
                         let msg: MessageModel = try JSONMapper.decode(data.toData ?? Data())
-                        self.messages.append(msg)
-                        self.messages.sort { (msg1: MessageModel, msg2: MessageModel) -> Bool in
-                            let formatter = ISO8601DateFormatter()
-                            let date1 = formatter.date(from: msg1.lastUpdated) ?? Date.distantPast
-                            let date2 = formatter.date(from: msg2.lastUpdated) ?? Date.distantPast
-                            return date1 < date2
+                        
+                        self.updateMessages(clear: false, newMessages: [msg])
+                        
+                        if let thread = self.activeThread {
+                            self.setActiveThread(ThreadModel(id: thread.id, uid: thread.uid, excerpt: msg.body, inbound: thread.inbound, status: thread.status, read: thread.read, date: thread.date, lastUpdated: msg.lastUpdated))
                         }
-                        self.updateSections()
-                        self.setActiveMessage(msg.body)
+                        
                         Task {
                             try await self.persistMessage(threadId: msg.parentId, messages: [msg])
                         }
@@ -157,6 +156,20 @@ class EngageWidgetModel: ObservableObject {
             }
     }
     
+    private func updateMessages(clear: Bool = true, newMessages: [MessageModel]) {
+        if clear {
+            messages = []
+        }
+        messages.insert(contentsOf: newMessages, at: messages.endIndex)
+        messages.sort { (msg1: MessageModel, msg2: MessageModel) -> Bool in
+            let formatter = ISO8601DateFormatter()
+            let date1 = formatter.date(from: msg1.lastUpdated) ?? Date.distantPast
+            let date2 = formatter.date(from: msg2.lastUpdated) ?? Date.distantPast
+            return date1 < date2
+        }
+        updateSections()
+    }
+    
     func handleSend(input: String) {
         guard !input.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         let tempId = "temp-\(UUID().uuidString)"
@@ -175,14 +188,7 @@ class EngageWidgetModel: ObservableObject {
             cid: clientId,
             status: "sending"
         )
-        messages.append(optimistic)
-        messages.sort { (msg1: MessageModel, msg2: MessageModel) -> Bool in
-            let formatter = ISO8601DateFormatter()
-            let date1 = formatter.date(from: msg1.lastUpdated) ?? Date.distantPast
-            let date2 = formatter.date(from: msg2.lastUpdated) ?? Date.distantPast
-            return date1 < date2
-        }
-        updateSections()
+        updateMessages(clear: false, newMessages: [optimistic])
         
         Task {
             do {
@@ -240,30 +246,28 @@ class EngageWidgetModel: ObservableObject {
         return try await storageService.loadMessages(threadId: "chat_threads_\(threadId)")
     }
     
-    func loadMessages() async throws -> [MessageModel] {
-        guard !threadId.isEmpty else { return [] }
+    func loadMessages() async {
+        guard !threadId.isEmpty else { return }
         
-        var messages = try await storageService.loadMessages(threadId: "chat_threads_\(threadId)")
-        if messages.isEmpty {
-            do {
-                let (data, _) = try await Network.shared.request(.loadMessages(uid: userId, threadId: threadId))
-                let jsonObject = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-                guard let messagesData = jsonObject?["messages"] else {
-                    throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No 'messages' key found"])
-                }
-                
-                let messagesJSONData = try JSONSerialization.data(withJSONObject: messagesData)
-                messages = try JSONMapper.decode(messagesJSONData)
-                if (!messages.isEmpty) {
-                    try await storageService.clear("chat_threads_\(threadId)")
-                    let _ = try await persistMessage(threadId: threadId, messages: messages)
-                }
-            } catch {
-                print("ERROR \(error.localizedDescription)")
+        do {
+            messages = try await storageService.loadMessages(threadId: "chat_threads_\(threadId)")
+            
+            let (data, _) = try await Network.shared.request(.loadMessages(uid: userId, threadId: threadId))
+            let jsonObject = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            guard let messagesData = jsonObject?["messages"] else {
+                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No 'messages' key found"])
             }
+            
+            let chatsJSONData = try JSONSerialization.data(withJSONObject: messagesData)
+            let chats: [MessageModel] = try JSONMapper.decode(chatsJSONData)
+            if (!chats.isEmpty) {
+                try await storageService.clear("chat_threads_\(threadId)")
+                let _ = try await persistMessage(threadId: threadId, messages: chats)
+            }
+            updateMessages(newMessages: chats)
+        } catch {
+            print("ERROR \(error.localizedDescription)")
         }
-        
-        return messages
     }
     
     func loadRecentThreads() async {
@@ -274,7 +278,7 @@ class EngageWidgetModel: ObservableObject {
                 for thread in threads {
                     if thread.status == "open" {
                         threadId = thread.id
-                        setActiveMessage(thread.excerpt ?? "")
+                        setActiveThread(thread)
                     }
                 }
                 try await storageService.clear("chat_threads")
@@ -319,20 +323,19 @@ class EngageWidgetModel: ObservableObject {
         try await storageService.saveMessages(threadId: "chat_threads_\(threadId)", messages: allMessages)
     }
     
-    private func setActiveMessage(_ msg: String) {
-        activeMessage = msg
+    private func setActiveThread(_ thread: ThreadModel?) {
+        activeThread = thread
     }
     
     func sendMessage(threadId: String, message: MessageModel) async throws {
-        setActiveMessage(message.body)
         let dictionary = ["body": message.body, "uid": message.uid, "cid": message.cid]
         let _ = try await Network.shared.request(.sendMessage(data: dictionary.toData))
     }
     
-    func dispose() async throws {
+    func dispose() async {
         do {
             cleanUp.forEach( { $0() } )
-            try socketService.closeSocket()
+            //            try socketService.closeSocket()
             try await storageService.clear("user")
             try await storageService.clear("chat_threads")
         } catch {

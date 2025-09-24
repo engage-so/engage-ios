@@ -38,11 +38,19 @@ struct ChatView: View {
                     .listRowSeparator(.hidden)
                 }
                 .listStyle(.plain)
+                .onAppear {
+                    // Scroll to the last message
+                    if let lastMessage = viewModel.messages.last {
+                        withAnimation {
+                            proxy.scrollTo(lastMessage.id, anchor: UnitPoint(x: 0.5, y: 1.5))
+                        }
+                    }
+                }
                 .onChange(of: viewModel.messages.count) { _ in
                     // Scroll to the last message when new message added
                     if let lastMessage = viewModel.messages.last {
                         withAnimation {
-                            proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                            proxy.scrollTo(lastMessage.id, anchor: UnitPoint(x: 0.5, y: 1.5))
                         }
                     }
                 }
@@ -97,7 +105,6 @@ struct SectionHeader: View {
             VStack { Divider() }
             Text(title)
                 .font(.system(size: 12, weight: .bold))
-                .foregroundColor(.black)
                 .padding(.vertical, 6)
                 .padding(.horizontal, 12)
                 .overlay(
@@ -122,7 +129,7 @@ struct MessageBubble: View {
             }
             VStack(alignment: message.outbound == true ? .trailing : .leading) {
                 HtmlTextView(text: message.body)
-                    .foregroundColor(.black)
+                    .foregroundColor(message.outbound == true ? .black : nil)
                     .padding(12)
                     .background(message.outbound == true ? Color(hex: 0xE8EAED) :  .clear)
                     .clipShape(RoundedRectangle(cornerRadius: 18))
@@ -134,7 +141,6 @@ struct MessageBubble: View {
                 
                 
                 Text(message.lastUpdated.formattedDate())
-                    .foregroundColor(.black)
                     .font(.system(size: 10))
                     .padding(.top, 4)
             }
